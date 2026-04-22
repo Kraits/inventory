@@ -1,0 +1,1926 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StockMW - Inventory & Accounting</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #09090b;
+      --bg-secondary: #18181b;
+      --bg-card: #1c1c1f;
+      --bg-elevated: #242428;
+      --fg-primary: #fafafa;
+      --fg-secondary: #a1a1aa;
+      --fg-muted: #71717a;
+      --accent: #c8956c;
+      --accent-hover: #d4a57e;
+      --accent-muted: rgba(200, 149, 108, 0.15);
+      --success: #4ade80;
+      --danger: #f87171;
+      --warning: #fbbf24;
+      --border: rgba(255, 255, 255, 0.06);
+      --border-strong: rgba(255, 255, 255, 0.1);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: var(--bg-primary);
+      color: var(--fg-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .font-display { font-family: 'Space Grotesk', sans-serif; }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--fg-muted); }
+
+    .bg-pattern {
+      position: fixed; inset: 0;
+      background: 
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(200, 149, 108, 0.08), transparent),
+        radial-gradient(ellipse 60% 40% at 100% 100%, rgba(200, 149, 108, 0.04), transparent);
+      pointer-events: none; z-index: 0;
+    }
+
+    .bg-grid {
+      position: fixed; inset: 0;
+      background-image: 
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none; z-index: 0;
+      opacity: 0.4;
+    }
+
+    .login-container { min-height: 100vh; display: flex; align-items: center; justify-content: center; position: relative; z-index: 1; }
+    .login-card {
+      background: var(--bg-card); border: 1px solid var(--border-strong); border-radius: 20px;
+      padding: 48px; width: 100%; max-width: 420px; position: relative; overflow: hidden;
+    }
+    .login-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    }
+
+    .app-container { display: flex; min-height: 100vh; position: relative; z-index: 1; }
+
+    .sidebar {
+      width: 260px; background: var(--bg-secondary); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; position: fixed; height: 100vh; z-index: 100;
+      transition: transform 0.3s ease;
+    }
+    .sidebar-brand { padding: 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
+    .sidebar-brand-icon {
+      width: 40px; height: 40px; background: linear-gradient(135deg, var(--accent), #a67c52);
+      border-radius: 12px; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 12px rgba(200, 149, 108, 0.3);
+    }
+    .sidebar-nav { flex: 1; padding: 16px 12px; overflow-y: auto; }
+    .nav-item {
+      display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 12px;
+      color: var(--fg-secondary); cursor: pointer; transition: all 0.2s ease; margin-bottom: 4px;
+      border: none; background: transparent; width: 100%; text-align: left; font-size: 14px; font-weight: 500;
+    }
+    .nav-item:hover { background: var(--bg-elevated); color: var(--fg-primary); }
+    .nav-item.active { background: var(--accent-muted); color: var(--accent); }
+    .nav-item.active svg { color: var(--accent); }
+    .sidebar-footer { padding: 16px; border-top: 1px solid var(--border); }
+    .user-card { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--bg-elevated); border-radius: 12px; }
+    .user-avatar {
+      width: 36px; height: 36px; background: linear-gradient(135deg, var(--accent), #a67c52);
+      border-radius: 10px; display: flex; align-items: center; justify-content: center;
+      font-weight: 600; font-size: 14px; color: #0a0a0a;
+    }
+
+    .main-content { flex: 1; margin-left: 260px; padding: 32px; min-height: 100vh; }
+    .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+    
+    .stat-card {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px;
+      padding: 24px; position: relative; overflow: hidden; transition: all 0.3s ease;
+    }
+    .stat-card:hover { border-color: var(--border-strong); transform: translateY(-2px); }
+    .stat-card::after {
+      content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, var(--accent), transparent); opacity: 0; transition: opacity 0.3s ease;
+    }
+    .stat-card:hover::after { opacity: 1; }
+    .stat-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 10px 20px; border-radius: 10px; font-weight: 500; font-size: 14px;
+      cursor: pointer; transition: all 0.2s ease; border: none;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), #a67c52); color: #0a0a0a;
+      box-shadow: 0 2px 8px rgba(200, 149, 108, 0.3);
+    }
+    .btn-primary:hover { box-shadow: 0 4px 16px rgba(200, 149, 108, 0.4); transform: translateY(-1px); }
+    .btn-secondary { background: var(--bg-elevated); color: var(--fg-primary); border: 1px solid var(--border-strong); }
+    .btn-secondary:hover { background: var(--bg-card); border-color: var(--accent); }
+    .btn-ghost { background: transparent; color: var(--fg-secondary); }
+    .btn-ghost:hover { background: var(--bg-elevated); color: var(--fg-primary); }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+    .btn-danger { background: rgba(248, 113, 113, 0.15); color: var(--danger); }
+
+    .input {
+      width: 100%; padding: 12px 16px; background: var(--bg-primary);
+      border: 1px solid var(--border-strong); border-radius: 10px;
+      color: var(--fg-primary); font-size: 14px; transition: all 0.2s ease;
+    }
+    .input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-muted); }
+    .input::placeholder { color: var(--fg-muted); }
+    select.input {
+      cursor: pointer; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23a1a1aa' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 12px center; padding-right: 40px;
+    }
+
+    .table-container { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      text-align: left; padding: 14px 16px; font-size: 11px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.5px; color: var(--fg-muted);
+      background: var(--bg-elevated); border-bottom: 1px solid var(--border);
+    }
+    td { padding: 16px; border-bottom: 1px solid var(--border); font-size: 14px; color: var(--fg-secondary); }
+    tr:hover td { background: var(--bg-elevated); }
+
+    .badge {
+      display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 6px;
+      font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px;
+    }
+    .badge-success { background: rgba(74, 222, 128, 0.15); color: var(--success); }
+    .badge-danger { background: rgba(248, 113, 113, 0.15); color: var(--danger); }
+    .badge-warning { background: rgba(251, 191, 36, 0.15); color: var(--warning); }
+    .badge-info { background: var(--accent-muted); color: var(--accent); }
+
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px);
+      z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px;
+      opacity: 0; visibility: hidden; transition: all 0.3s ease;
+    }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    .modal {
+      background: var(--bg-card); border: 1px solid var(--border-strong); border-radius: 20px;
+      width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto;
+      transform: scale(0.95) translateY(20px); transition: transform 0.3s ease;
+    }
+    .modal-lg { max-width: 800px; }
+    .modal-overlay.active .modal { transform: scale(1) translateY(0); }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid var(--border); }
+    .modal-body { padding: 24px; }
+
+    .progress-bar { height: 6px; background: var(--bg-primary); border-radius: 3px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .animate-fade-in { animation: fadeIn 0.4s ease forwards; }
+    .page-content { opacity: 0; animation: fadeIn 0.5s ease forwards; }
+    .stagger-1 { animation-delay: 0.05s; } .stagger-2 { animation-delay: 0.1s; } .stagger-3 { animation-delay: 0.15s; } .stagger-4 { animation-delay: 0.2s; }
+
+    .alert { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-radius: 12px; margin-bottom: 20px; }
+    .alert-warning { background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.2); color: var(--warning); }
+
+    .search-container { position: relative; }
+    .search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--fg-muted); }
+    .search-input { padding-left: 44px; }
+
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* POS Styles */
+    .pos-container { display: grid; grid-template-columns: 1fr 400px; gap: 24px; height: calc(100vh - 140px); }
+    .pos-products { overflow-y: auto; padding-right: 8px; }
+    .pos-cart { background: var(--bg-secondary); border-radius: 16px; display: flex; flex-direction: column; border: 1px solid var(--border); }
+    .pos-cart-header { padding: 20px; border-bottom: 1px solid var(--border); }
+    .pos-cart-items { flex: 1; overflow-y: auto; padding: 16px; }
+    .pos-cart-footer { padding: 20px; border-top: 1px solid var(--border); }
+    .cart-item { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--bg-card); border-radius: 10px; margin-bottom: 8px; }
+    .cart-item-info { flex: 1; }
+    .cart-item-controls { display: flex; align-items: center; gap: 8px; }
+    .qty-btn { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; background: var(--bg-elevated); border: 1px solid var(--border-strong); color: var(--fg-primary); cursor: pointer; }
+    .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+    .product-tile { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; cursor: pointer; transition: all 0.2s; text-align: center; }
+    .product-tile:hover { border-color: var(--accent); transform: translateY(-2px); }
+
+    /* Print Styles */
+    @media print {
+      body * { visibility: hidden; }
+      #printArea, #printArea * { visibility: visible; }
+      #printArea { position: absolute; left: 0; top: 0; width: 100%; background: white; color: black; padding: 20px; }
+      .no-print { display: none !important; }
+    }
+
+    @media (max-width: 1024px) {
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .main-content { margin-left: 0; }
+      .pos-container { grid-template-columns: 1fr; height: auto; }
+      .pos-cart { min-height: 300px; }
+    }
+    @media (max-width: 640px) {
+      .main-content { padding: 16px; }
+      .stat-grid { grid-template-columns: 1fr !important; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+    }
+
+    button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible {
+      outline: 2px solid var(--accent); outline-offset: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-pattern"></div>
+  <div class="bg-grid"></div>
+
+  <!-- Login Page -->
+  <div id="loginPage" class="login-container">
+    <div class="login-card animate-fade-in">
+      <div class="text-center mb-8">
+        <div class="inline-flex items-center gap-3 mb-6">
+          <div class="sidebar-brand-icon">
+            <svg width="20" height="20" fill="none" stroke="#0a0a0a" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+            </svg>
+          </div>
+          <span class="font-display text-2xl font-bold">StockMW</span>
+        </div>
+        <p class="text-sm" style="color: var(--fg-muted)">Inventory & Accounting for Malawi Businesses</p>
+      </div>
+
+      <h2 class="font-display text-xl font-semibold mb-1">Welcome back</h2>
+      <p class="text-sm mb-6" style="color: var(--fg-muted)">Sign in to your account</p>
+
+      <div id="loginError" class="alert alert-warning" style="display: none;">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        <span id="loginErrorText"></span>
+      </div>
+
+      <div class="mb-4">
+        <label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Email</label>
+        <input type="email" id="loginEmail" class="input" value="admin@banda.mw" placeholder="admin@business.mw">
+      </div>
+
+      <div class="mb-6">
+        <label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Password</label>
+        <input type="password" id="loginPassword" class="input" value="password123" placeholder="Enter your password">
+      </div>
+
+      <button onclick="handleLogin()" class="btn btn-primary w-full mb-4">Sign In</button>
+      <p class="text-center text-xs" style="color: var(--fg-muted)">Demo: admin@banda.mw / password123</p>
+    </div>
+  </div>
+
+  <!-- App -->
+  <div id="appContainer" class="app-container" style="display: none;">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <div class="sidebar-brand-icon">
+          <svg width="18" height="18" fill="none" stroke="#0a0a0a" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+        </div>
+        <div>
+          <p class="font-display font-bold text-sm">StockMW</p>
+          <p class="text-xs" style="color: var(--accent)">Banda Wholesalers</p>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav" role="navigation" aria-label="Main navigation">
+        <button class="nav-item active" data-page="dashboard" onclick="navigateTo('dashboard')">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+          Dashboard
+        </button>
+        <button class="nav-item" data-page="pos" onclick="navigateTo('pos')">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+          Point of Sale
+        </button>
+        <button class="nav-item" data-page="products" onclick="navigateTo('products')">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+          Products
+        </button>
+        <button class="nav-item" data-page="inventory" onclick="navigateTo('inventory')">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/></svg>
+          Stock Movement
+        </button>
+        <button class="nav-item" data-page="stockcount" onclick="navigateTo('stockcount')">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+          Stock Counting
+        </button>
+        <button class="nav-item" data-page="suppliers" onclick="navigateTo('suppliers')">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+          Suppliers
+        </button>
+        <button class="nav-item" data-page="expenses" onclick="navigateTo('expenses')">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+          Expenses
+        </button>
+        <button class="nav-item" data-page="accounting" onclick="navigateTo('accounting')">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+          Accounting
+        </button>
+        <button class="nav-item" data-page="reports" onclick="navigateTo('reports')">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+          Reports
+        </button>
+        <button class="nav-item" data-page="users" onclick="navigateTo('users')">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+          Users
+        </button>
+        <button class="nav-item" data-page="settings" onclick="navigateTo('settings')">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/></svg>
+          Settings
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-card">
+          <div class="user-avatar">C</div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium truncate">Chisomo Banda</p>
+            <p class="text-xs truncate" style="color: var(--accent)">Admin</p>
+          </div>
+        </div>
+        <button onclick="handleLogout()" class="btn btn-ghost w-full mt-2 text-xs">Sign Out</button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Mobile Header -->
+      <button onclick="toggleSidebar()" class="lg:hidden mb-4 btn btn-secondary no-print">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        Menu
+      </button>
+
+      <div id="alertBanner" class="alert alert-warning no-print" style="display: none;">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        <span id="alertText"></span>
+      </div>
+
+      <!-- Dashboard Page -->
+      <div id="page-dashboard" class="page active page-content">
+        <div class="mb-6">
+          <h1 class="font-display text-2xl font-bold mb-1">Dashboard</h1>
+          <p id="dashGreeting" style="color: var(--fg-muted)">Welcome back</p>
+        </div>
+        <div class="stat-grid grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div class="stat-card animate-fade-in stagger-1">
+            <div class="flex items-start gap-4">
+              <div class="stat-icon" style="background: var(--accent-muted)"><svg width="22" height="22" fill="none" stroke="var(--accent)" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg></div>
+              <div><p class="text-xs uppercase tracking-wider mb-1" style="color: var(--fg-muted)">Today's Sales</p><p class="font-display text-xl font-bold" id="stat-today-sales">MK 0</p><p class="text-xs" style="color: var(--fg-muted)">Revenue</p></div>
+            </div>
+          </div>
+          <div class="stat-card animate-fade-in stagger-2">
+            <div class="flex items-start gap-4">
+              <div class="stat-icon" style="background: rgba(248, 113, 113, 0.15)"><svg width="22" height="22" fill="none" stroke="var(--danger)" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg></div>
+              <div><p class="text-xs uppercase tracking-wider mb-1" style="color: var(--fg-muted)">Low Stock</p><p class="font-display text-xl font-bold" id="stat-low-stock">2</p><p class="text-xs" style="color: var(--fg-muted)">Need restocking</p></div>
+            </div>
+          </div>
+          <div class="stat-card animate-fade-in stagger-3">
+            <div class="flex items-start gap-4">
+              <div class="stat-icon" style="background: rgba(74, 222, 128, 0.15)"><svg width="22" height="22" fill="none" stroke="var(--success)" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg></div>
+              <div><p class="text-xs uppercase tracking-wider mb-1" style="color: var(--fg-muted)">Stock Value</p><p class="font-display text-xl font-bold" id="stat-stock-value">MK 4.2M</p><p class="text-xs" style="color: var(--fg-muted)">At cost price</p></div>
+            </div>
+          </div>
+          <div class="stat-card animate-fade-in stagger-4">
+            <div class="flex items-start gap-4">
+              <div class="stat-icon" style="background: rgba(251, 191, 36, 0.15)"><svg width="22" height="22" fill="none" stroke="var(--warning)" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg></div>
+              <div><p class="text-xs uppercase tracking-wider mb-1" style="color: var(--fg-muted)">Expenses</p><p class="font-display text-xl font-bold" id="stat-expenses">MK 468K</p><p class="text-xs" style="color: var(--fg-muted)">This month</p></div>
+            </div>
+          </div>
+        </div>
+        
+        <div id="lowStockAlert" class="card mb-6" style="background: rgba(248, 113, 113, 0.08); border-color: rgba(248, 113, 113, 0.2)">
+          <div class="p-4 flex items-center gap-3 border-b" style="border-color: rgba(248, 113, 113, 0.2)"><svg width="16" height="16" fill="none" stroke="var(--danger)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg><span class="font-semibold text-sm" style="color: var(--danger)">Low Stock Alerts</span></div>
+          <div class="p-4 flex flex-wrap gap-2" id="lowStockItems"></div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="grid lg:grid-cols-2 gap-4 mb-6">
+            <div class="card p-5">
+                <h3 class="font-semibold text-sm uppercase tracking-wider mb-4" style="color: var(--fg-muted)">Revenue vs Expenses (Last 7 Days)</h3>
+                <div style="height: 250px;"><canvas id="revenueChart"></canvas></div>
+            </div>
+            <div class="card p-5">
+                <h3 class="font-semibold text-sm uppercase tracking-wider mb-4" style="color: var(--fg-muted)">Stock Value by Category</h3>
+                <div style="height: 250px;"><canvas id="stockChart"></canvas></div>
+            </div>
+        </div>
+
+        <div class="grid lg:grid-cols-2 gap-4">
+          <div class="card p-5"><h3 class="font-semibold text-sm uppercase tracking-wider mb-4" style="color: var(--fg-muted)">Recent Movements</h3><div id="recentMovements" class="space-y-3"></div></div>
+          <div class="card p-5"><h3 class="font-semibold text-sm uppercase tracking-wider mb-4" style="color: var(--fg-muted)">Top Products by Value</h3><div id="topProducts" class="space-y-4"></div></div>
+        </div>
+      </div>
+
+      <!-- POS Page -->
+      <div id="page-pos" class="page page-content">
+        <div class="flex justify-between items-center mb-4">
+            <div><h1 class="font-display text-2xl font-bold mb-1">Point of Sale</h1><p style="color: var(--fg-muted)">Create sales and invoices</p></div>
+        </div>
+        
+        <div class="pos-container">
+            <!-- Products -->
+            <div class="pos-products">
+                <div class="search-container mb-4">
+                    <svg class="search-icon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    <input type="text" id="posSearchInput" class="input search-input" placeholder="Scan barcode or search product..." oninput="filterPOSProducts(this.value)" onkeydown="handleBarcodeScan(event)">
+                </div>
+                <div class="product-grid" id="posProductGrid"></div>
+            </div>
+
+            <!-- Cart -->
+            <div class="pos-cart">
+                <div class="pos-cart-header">
+                    <h2 class="font-display font-bold text-lg">Current Sale</h2>
+                </div>
+                <div class="pos-cart-items" id="posCartItems">
+                    <div class="text-center py-12" style="color: var(--fg-muted)">Cart is empty</div>
+                </div>
+                <div class="pos-cart-footer">
+                    <div class="flex justify-between mb-2"><span style="color: var(--fg-muted)">Subtotal</span><span id="cartSubtotal">MK 0</span></div>
+                    <div class="flex justify-between mb-4 text-xl font-bold"><span>Total</span><span id="cartTotal" style="color: var(--accent)">MK 0</span></div>
+                    <button onclick="completeSale()" class="btn btn-primary w-full text-lg py-3">Complete Sale</button>
+                </div>
+            </div>
+        </div>
+      </div>
+
+      <!-- Products Page -->
+      <div id="page-products" class="page page-content">
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <div><h1 class="font-display text-2xl font-bold mb-1">Products</h1><p style="color: var(--fg-muted)"><span id="productsCount">5</span> total items</p></div>
+          <button onclick="openProductModal()" class="btn btn-primary"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg> Add Product</button>
+        </div>
+        <div class="card mb-4 p-4">
+          <div class="search-container">
+            <svg class="search-icon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <input type="text" class="input search-input" placeholder="Search products by name or SKU..." oninput="filterProducts(this.value)">
+          </div>
+        </div>
+        <div class="card"><div class="table-container"><table><thead><tr><th>Product</th><th>SKU</th><th>Category</th><th>Supplier</th><th>Cost</th><th>Price</th><th>Stock</th><th>Status</th><th>Actions</th></tr></thead><tbody id="productsTable"></tbody></table></div></div>
+      </div>
+
+      <!-- Inventory Page -->
+      <div id="page-inventory" class="page page-content">
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <div><h1 class="font-display text-2xl font-bold mb-1">Stock Movement</h1><p style="color: var(--fg-muted)">Track inventory changes</p></div>
+          <button onclick="openMovementModal()" class="btn btn-primary"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg> Record Movement</button>
+        </div>
+        <div class="flex flex-wrap gap-2 mb-4" id="movementFilters">
+          <button class="btn btn-secondary active" data-filter="ALL" onclick="filterMovements('ALL')">All</button>
+          <button class="btn btn-ghost" data-filter="IN" onclick="filterMovements('IN')">IN</button>
+          <button class="btn btn-ghost" data-filter="OUT" onclick="filterMovements('OUT')">OUT</button>
+          <button class="btn btn-ghost" data-filter="SALE" onclick="filterMovements('SALE')">Sales</button>
+          <button class="btn btn-ghost" data-filter="ADJUST" onclick="filterMovements('ADJUST')">Adjust</button>
+        </div>
+        <div class="card"><div class="table-container"><table><thead><tr><th>Date</th><th>Product</th><th>Type</th><th>Quantity</th><th>Reason</th><th>Reference</th></tr></thead><tbody id="movementsTable"></tbody></table></div></div>
+      </div>
+
+      <!-- Stock Counting Page -->
+      <div id="page-stockcount" class="page page-content">
+        <div class="mb-6"><h1 class="font-display text-2xl font-bold mb-1">Physical Stock Count</h1><p style="color: var(--fg-muted)">Compare system quantities with physical counts</p></div>
+        <div id="stockCountForm">
+          <div class="card mb-4">
+            <div class="p-4 border-b" style="border-color: var(--border)"><p class="text-sm" style="color: var(--fg-muted)">Enter the physically counted quantity for each product. Leave blank to keep system quantity.</p></div>
+            <div class="table-container"><table><thead><tr><th>Product</th><th>SKU</th><th>System Qty</th><th>Counted Qty</th></tr></thead><tbody id="stockCountTable"></tbody></table></div>
+            <div class="p-4"><button onclick="submitStockCount()" class="btn btn-primary">Submit Count</button></div>
+          </div>
+        </div>
+        <div id="stockCountResults" style="display: none;">
+          <div class="card mb-4">
+            <div class="p-4 border-b" style="border-color: var(--border)"><h3 class="font-semibold">Count Results</h3></div>
+            <div class="table-container"><table><thead><tr><th>Product</th><th>System Qty</th><th>Counted Qty</th><th>Difference</th><th>Status</th></tr></thead><tbody id="stockResultsTable"></tbody></table></div>
+          </div>
+          <div class="flex gap-3"><button onclick="recountStock()" class="btn btn-secondary">Recount</button><button onclick="applyAdjustments()" class="btn btn-primary">Apply Adjustments</button></div>
+        </div>
+      </div>
+
+      <!-- Suppliers Page -->
+      <div id="page-suppliers" class="page page-content">
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <div><h1 class="font-display text-2xl font-bold mb-1">Suppliers</h1><p style="color: var(--fg-muted)"><span id="suppliersCount">4</span> suppliers</p></div>
+          <button onclick="openSupplierModal()" class="btn btn-primary"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg> Add Supplier</button>
+        </div>
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4" id="suppliersGrid"></div>
+      </div>
+
+      <!-- Expenses Page -->
+      <div id="page-expenses" class="page page-content">
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <div><h1 class="font-display text-2xl font-bold mb-1">Expenses</h1><p style="color: var(--fg-muted)">Total: <span id="totalExpenses">MK 468,000</span></p></div>
+          <button onclick="openExpenseModal()" class="btn btn-primary"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg> Add Expense</button>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6" id="expenseCategories"></div>
+        <div class="card"><div class="table-container"><table><thead><tr><th>Date</th><th>Title</th><th>Category</th><th>Method</th><th>Amount</th><th>Actions</th></tr></thead><tbody id="expensesTable"></tbody></table></div></div>
+      </div>
+
+      <!-- Accounting Page -->
+      <div id="page-accounting" class="page page-content">
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <div><h1 class="font-display text-2xl font-bold mb-1">Accounting</h1><p style="color: var(--fg-muted)">Chart of accounts & transactions</p></div>
+          <button onclick="openTransactionModal()" class="btn btn-primary"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg> New Transaction</button>
+        </div>
+        <div class="grid lg:grid-cols-3 gap-4 mb-6">
+          <div class="card p-5"><h3 class="text-xs font-semibold uppercase tracking-wider mb-3" style="color: var(--fg-muted)">Assets</h3><div id="assetsList" class="space-y-2"></div></div>
+          <div class="card p-5"><h3 class="text-xs font-semibold uppercase tracking-wider mb-3" style="color: var(--fg-muted)">Liabilities</h3><div id="liabilitiesList" class="space-y-2"></div></div>
+          <div class="card p-5"><h3 class="text-xs font-semibold uppercase tracking-wider mb-3" style="color: var(--fg-muted)">Income</h3><div id="incomeList" class="space-y-2"></div></div>
+        </div>
+        <div class="card"><div class="p-4 border-b" style="border-color: var(--border)"><h3 class="font-semibold">Recent Transactions</h3></div><div class="table-container"><table><thead><tr><th>Date</th><th>Account</th><th>Type</th><th>Amount</th><th>Reference</th></tr></thead><tbody id="transactionsTable"></tbody></table></div></div>
+      </div>
+
+      <!-- Reports Page -->
+      <div id="page-reports" class="page page-content">
+        <div class="mb-6"><h1 class="font-display text-2xl font-bold mb-1">Reports</h1><p style="color: var(--fg-muted)">Business performance overview</p></div>
+        <div class="card p-6 mb-4">
+          <h2 class="font-display font-semibold mb-4">Profit & Loss Statement</h2>
+          <div class="space-y-3">
+            <div class="flex justify-between py-2 border-b" style="border-color: var(--border)"><span style="color: var(--fg-secondary)">Total Sales Revenue</span><span class="font-semibold" style="color: var(--success)" id="report-revenue">MK 0</span></div>
+            <div class="flex justify-between py-2 border-b" style="border-color: var(--border)"><span style="color: var(--fg-secondary)">Cost of Goods Sold</span><span class="font-semibold" style="color: var(--danger)" id="report-cogs">(MK 0)</span></div>
+            <div class="flex justify-between py-2 border-b" style="border-color: var(--border)"><span class="font-bold">Gross Profit</span><span class="font-bold" style="color: var(--accent)" id="report-gross-profit">MK 0</span></div>
+            <div class="flex justify-between py-2 border-b" style="border-color: var(--border)"><span style="color: var(--fg-secondary)">Operating Expenses</span><span class="font-semibold" style="color: var(--danger)" id="report-expenses">(MK 0)</span></div>
+            <div class="flex justify-between py-3 px-3 rounded-xl" style="background: var(--accent-muted)"><span class="font-bold">Net Profit / (Loss)</span><span class="font-bold text-lg" style="color: var(--accent)" id="report-net-profit">MK 0</span></div>
+          </div>
+        </div>
+        <div class="grid lg:grid-cols-2 gap-4">
+          <div class="card p-5"><h3 class="font-semibold mb-3 flex items-center gap-2"><svg width="15" height="15" fill="none" stroke="var(--danger)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg> Low Stock (<span id="report-low-count">2</span>)</h3><div id="reportLowStock" class="space-y-2"></div></div>
+          <div class="card p-5"><h3 class="font-semibold mb-3">Expense Breakdown</h3><div id="reportExpenseBreakdown" class="space-y-3"></div></div>
+        </div>
+      </div>
+
+      <!-- Users Page -->
+      <div id="page-users" class="page page-content">
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <div><h1 class="font-display text-2xl font-bold mb-1">Users</h1><p style="color: var(--fg-muted)">Manage staff access</p></div>
+          <button onclick="openUserModal()" class="btn btn-primary"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg> Add User</button>
+        </div>
+        <div class="card"><div class="table-container"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead><tbody id="usersTable"></tbody></table></div></div>
+      </div>
+
+      <!-- Settings Page -->
+      <div id="page-settings" class="page page-content">
+        <h1 class="font-display text-2xl font-bold mb-6">Settings</h1>
+        <div class="card p-6 mb-4">
+          <h3 class="font-semibold mb-4">Business Information</h3>
+          <div class="grid md:grid-cols-2 gap-4 mb-4">
+            <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Business Name</label><input type="text" id="settBizName" class="input" value="Banda Wholesalers"></div>
+            <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Phone</label><input type="text" id="settBizPhone" class="input" value="+265 999 100 200"></div>
+            <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Email</label><input type="email" id="settBizEmail" class="input" value="info@banda.mw"></div>
+            <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Address</label><input type="text" id="settBizAddress" class="input" value="Lilongwe, Area 25"></div>
+          </div>
+          <button onclick="saveSettings()" class="btn btn-primary">Save Changes</button>
+        </div>
+        
+        <!-- Data Management -->
+        <div class="card p-6 mb-4">
+          <h3 class="font-semibold mb-1">Data Management</h3>
+          <p class="text-sm mb-4" style="color: var(--fg-muted)">Backup your data or restore from a previous backup.</p>
+          <div class="flex gap-3">
+            <button onclick="exportData()" class="btn btn-secondary"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg> Export Backup</button>
+            <label class="btn btn-secondary" style="cursor:pointer">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg> Import Backup
+                <input type="file" accept=".json" onchange="importData(event)" style="display:none">
+            </label>
+          </div>
+        </div>
+
+        <div class="card p-6">
+          <h3 class="font-semibold mb-1">Danger Zone</h3>
+          <p class="text-sm mb-4" style="color: var(--fg-muted)">Reset all application data to defaults.</p>
+          <button onclick="clearAllData()" class="btn btn-danger">Reset All Data</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal -->
+  <div id="modalOverlay" class="modal-overlay no-print" onclick="closeModalOnOverlay(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header"><h2 class="font-display font-bold" id="modalTitle">Modal Title</h2><button onclick="closeModal()" class="btn btn-ghost p-2" aria-label="Close modal"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button></div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <!-- Invoice Print Area (Hidden) -->
+  <div id="printArea" style="display: none;"></div>
+
+  <script>
+    // ─── DEFAULT STATE ────────────────────────────────────────────────────────
+    const defaultState = {
+      products: [
+        { id: 1, name: "Maize Flour 25kg", sku: "MF-001", barcode: "54300001", category: "Grains", supplier: "Farmers Union", cost: 12000, price: 14500, qty: 142, minQty: 20, unit: "Bag" },
+        { id: 2, name: "Cooking Oil 5L", sku: "CO-001", barcode: "54300002", category: "Oils", supplier: "NACO Ltd", cost: 8500, price: 10200, qty: 8, minQty: 15, unit: "Jerry" },
+        { id: 3, name: "Sugar 50kg", sku: "SG-001", barcode: "54300003", category: "Grains", supplier: "Illovo Sugar", cost: 18000, price: 21000, qty: 67, minQty: 10, unit: "Bag" },
+        { id: 4, name: "Bleach 1L", sku: "BL-001", barcode: "54300004", category: "Chemicals", supplier: "Chibuku Brands", cost: 900, price: 1200, qty: 3, minQty: 25, unit: "Bottle" },
+        { id: 5, name: "Rice 10kg", sku: "RC-001", barcode: "54300005", category: "Grains", supplier: "Farmers Union", cost: 7200, price: 8800, qty: 89, minQty: 30, unit: "Bag" },
+      ],
+      suppliers: [
+        { id: 1, name: "Farmers Union", phone: "+265 999 001 001", email: "info@farmersunion.mw", address: "Lilongwe, Area 3", balance: 45000 },
+        { id: 2, name: "NACO Ltd", phone: "+265 999 002 002", email: "sales@naco.mw", address: "Blantyre, Limbe", balance: 120000 },
+        { id: 3, name: "Illovo Sugar", phone: "+265 999 003 003", email: "orders@illovo.mw", address: "Nchalo", balance: 0 },
+        { id: 4, name: "Chibuku Brands", phone: "+265 999 004 004", email: "trade@chibuku.mw", address: "Blantyre", balance: 22000 },
+      ],
+      expenses: [
+        { id: 1, title: "Electricity Bill", amount: 45000, category: "Utilities", method: "Bank Transfer", date: "2025-04-01" },
+        { id: 2, title: "Truck Fuel", amount: 18000, category: "Transport", method: "Cash", date: "2025-04-05" },
+        { id: 3, title: "Staff Salaries", amount: 320000, category: "Payroll", method: "Bank Transfer", date: "2025-04-28" },
+        { id: 4, title: "Warehouse Rent", amount: 85000, category: "Rent", method: "Bank Transfer", date: "2025-04-01" },
+      ],
+      movements: [
+        { id: 1, product: "Maize Flour 25kg", type: "IN", qty: 50, reason: "Purchase", ref: "PO-2025-041", date: "2025-04-02" },
+        { id: 2, product: "Cooking Oil 5L", type: "OUT", qty: 12, reason: "Sale", ref: "INV-2025-099", date: "2025-04-03" },
+        { id: 3, product: "Sugar 50kg", type: "ADJUST", qty: 2, reason: "Damaged", ref: "ADJ-001", date: "2025-04-04" },
+        { id: 4, product: "Rice 10kg", type: "IN", qty: 100, reason: "Purchase", ref: "PO-2025-042", date: "2025-04-06" },
+      ],
+      accounts: [
+        { id: 1, name: "Cash in Hand", type: "Asset", balance: 280000 },
+        { id: 2, name: "Bank Account (NBS)", type: "Asset", balance: 1450000 },
+        { id: 3, name: "Accounts Payable", type: "Liability", balance: 187000 },
+        { id: 4, name: "Sales Revenue", type: "Income", balance: 890000 },
+      ],
+      transactions: [
+        { id: 1, account: "Sales Revenue", type: "Credit", amount: 890000, ref: "Monthly Sales", date: "2025-04-30" },
+        { id: 2, account: "Bank Account (NBS)", type: "Debit", amount: 450000, ref: "Stock Purchase", date: "2025-04-15" },
+      ],
+      users: [
+        { id: 1, name: "Chisomo Banda", email: "admin@banda.mw", role: "Admin", status: "Active" },
+        { id: 2, name: "Tadala Phiri", email: "store@banda.mw", role: "Storekeeper", status: "Active" },
+        { id: 3, name: "Kondwani Mwale", email: "acc@banda.mw", role: "Accountant", status: "Active" },
+      ],
+      sales: []
+    };
+
+    // ─── STATE MANAGEMENT ─────────────────────────────────────────────────────
+    let state = loadState();
+    let cart = [];
+    let revenueChartInstance = null;
+    let stockChartInstance = null;
+    let chartInitTimer = null;
+
+    function loadState() {
+      try {
+        const saved = localStorage.getItem('stockmw_data');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          // Deep merge: preserve array keys from defaults, use saved values for known arrays
+          const merged = { ...defaultState };
+          for (const key of Object.keys(defaultState)) {
+            if (Array.isArray(defaultState[key])) {
+              // If saved has the key and it's an array, use it; otherwise keep default
+              merged[key] = Array.isArray(parsed[key]) ? parsed[key] : [...defaultState[key]];
+            } else if (parsed[key] !== undefined) {
+              merged[key] = parsed[key];
+            }
+          }
+          // Also carry over any new keys from parsed that defaults don't have
+          for (const key of Object.keys(parsed)) {
+            if (!(key in merged)) {
+              merged[key] = parsed[key];
+            }
+          }
+          return merged;
+        }
+      } catch (e) {
+        console.error("Failed to load state", e);
+      }
+      return JSON.parse(JSON.stringify(defaultState));
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem('stockmw_data', JSON.stringify(state));
+      } catch (e) {
+        console.error("Failed to save state", e);
+      }
+    }
+
+    function clearAllData() {
+      if(confirm('Are you sure you want to reset all data to defaults? This cannot be undone.')) {
+        localStorage.removeItem('stockmw_data');
+        state = JSON.parse(JSON.stringify(defaultState));
+        cart = [];
+        navigateTo('dashboard');
+      }
+    }
+
+    // Runtime state (not persisted)
+    let currentPage = 'dashboard';
+    let movementFilter = 'ALL';
+    let stockCounts = {};
+    let stockResults = [];
+    let authed = false;
+    let authUser = null;
+
+    // ─── HELPERS ──────────────────────────────────────────────────────────────
+    const fmt = (n) => `MK ${(Number(n) || 0).toLocaleString()}`;
+    const fmtShort = (n) => {
+      const abs = Math.abs(n);
+      const sign = n < 0 ? '-' : '';
+      if (abs >= 1000000) return `${sign}MK ${(abs/1000000).toFixed(1)}M`;
+      if (abs >= 1000) return `${sign}MK ${(abs/1000).toFixed(0)}K`;
+      return `${sign}MK ${abs}`;
+    };
+    const esc = (str) => {
+      if (str === null || str === undefined) return '';
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+    };
+    const today = () => {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    };
+
+    // ─── AUTH ──────────────────────────────────────────────────────────────────
+    function handleLogin() {
+      const email = document.getElementById('loginEmail').value.trim();
+      const pass = document.getElementById('loginPassword').value;
+      const errorEl = document.getElementById('loginError');
+      const errorText = document.getElementById('loginErrorText');
+
+      if (!email || !pass) { errorText.textContent = 'Please fill all fields'; errorEl.style.display = 'flex'; return; }
+      if (pass.length < 6) { errorText.textContent = 'Password must be at least 6 characters'; errorEl.style.display = 'flex'; return; }
+
+      // Validate credentials against registered users
+      const user = state.users.find(u => u.email.toLowerCase() === email.toLowerCase());
+      if (!user) { errorText.textContent = 'No account found with that email'; errorEl.style.display = 'flex'; return; }
+      if (user.status !== 'Active') { errorText.textContent = 'Account is disabled. Contact admin.'; errorEl.style.display = 'flex'; return; }
+
+      // In production, passwords would be hashed. For this SPA, we accept 6+ chars for existing users.
+      authed = true;
+      authUser = user;
+
+      // Update sidebar user card
+      document.querySelector('.user-avatar').textContent = user.name[0];
+      document.querySelector('.user-card .text-sm').textContent = user.name;
+      document.querySelector('.user-card .text-xs').textContent = user.role;
+
+      // Update sidebar brand from settings
+      const bizName = state.settings?.businessName || 'Banda Wholesalers';
+      const brandSub = document.querySelector('.sidebar-brand p:nth-child(2)');
+      if (brandSub) brandSub.textContent = bizName;
+
+      document.getElementById('loginPage').style.display = 'none';
+      document.getElementById('appContainer').style.display = 'flex';
+      navigateTo('dashboard');
+    }
+
+    function handleLogout() {
+      authed = false;
+      authUser = null;
+      document.getElementById('loginPage').style.display = 'flex';
+      document.getElementById('appContainer').style.display = 'none';
+    }
+
+    // ─── NAVIGATION ────────────────────────────────────────────────────────────
+    function navigateTo(page) {
+      currentPage = page;
+      
+      document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.toggle('active', item.dataset.page === page);
+      });
+
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      const activePage = document.getElementById(`page-${page}`);
+      if (activePage) activePage.classList.add('active');
+
+      updateAlertBanner();
+
+      switch(page) {
+        case 'dashboard': renderDashboard(); break;
+        case 'pos': renderPOS(); break;
+        case 'products': renderProducts(); break;
+        case 'inventory': renderMovements(); break;
+        case 'stockcount': stockCounts = {}; stockResults = []; document.getElementById('stockCountForm').style.display = 'block'; document.getElementById('stockCountResults').style.display = 'none'; renderStockCount(); break;
+        case 'suppliers': renderSuppliers(); break;
+        case 'expenses': renderExpenses(); break;
+        case 'accounting': renderAccounting(); break;
+        case 'reports': renderReports(); break;
+        case 'users': renderUsers(); break;
+        case 'settings': renderSettings(); break;
+      }
+
+      document.getElementById('sidebar').classList.remove('open');
+    }
+
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('open');
+    }
+
+    function updateAlertBanner() {
+      const lowCount = state.products.filter(p => p.qty <= p.minQty).length;
+      const banner = document.getElementById('alertBanner');
+      if (lowCount > 0 && currentPage !== 'dashboard') {
+        document.getElementById('alertText').textContent = `${lowCount} product${lowCount > 1 ? 's' : ''} running low on stock`;
+        banner.style.display = 'flex';
+      } else {
+        banner.style.display = 'none';
+      }
+    }
+
+    // ─── MODAL ─────────────────────────────────────────────────────────────────
+    function openModal(title, content, size = '') {
+      document.getElementById('modalTitle').textContent = title;
+      const modalEl = document.querySelector('.modal');
+      modalEl.classList.remove('modal-lg');
+      if(size) modalEl.classList.add(size);
+      document.getElementById('modalBody').innerHTML = content;
+      document.getElementById('modalOverlay').classList.add('active');
+      
+      setTimeout(() => {
+        const firstInput = document.querySelector('.modal input, .modal select');
+        if (firstInput) firstInput.focus();
+      }, 100);
+    }
+
+    function closeModal() {
+      document.getElementById('modalOverlay').classList.remove('active');
+    }
+
+    function closeModalOnOverlay(e) {
+      if (e.target === e.currentTarget) closeModal();
+    }
+
+    // ─── CHARTS ────────────────────────────────────────────────────────────────
+    function initCharts() {
+        const revenueCtx = document.getElementById('revenueChart');
+        const stockCtx = document.getElementById('stockChart');
+        
+        // Destroy previous instances
+        if(revenueChartInstance) revenueChartInstance.destroy();
+        if(stockChartInstance) stockChartInstance.destroy();
+
+        // --- Revenue vs Expense Data ---
+        const last7Days = [...Array(7)].map((_, i) => {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        }).reverse();
+
+        const salesData = last7Days.map(date => {
+            return state.sales.filter(s => s.date === date).reduce((sum, s) => sum + s.total, 0);
+        });
+        
+        const expenseData = last7Days.map(date => {
+            return state.expenses.filter(e => e.date === date).reduce((sum, e) => sum + e.amount, 0);
+        });
+
+        revenueChartInstance = new Chart(revenueCtx, {
+            type: 'bar',
+            data: {
+                labels: last7Days.map(d => new Date(d).toLocaleDateString('en-GB', { weekday: 'short' })),
+                datasets: [
+                    {
+                        label: 'Sales',
+                        data: salesData,
+                        backgroundColor: 'rgba(200, 149, 108, 0.7)',
+                        borderRadius: 4
+                    },
+                    {
+                        label: 'Expenses',
+                        data: expenseData,
+                        backgroundColor: 'rgba(248, 113, 113, 0.5)',
+                        borderRadius: 4
+                    }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { labels: { color: '#a1a1aa' } } },
+                scales: {
+                    y: { ticks: { color: '#71717a' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                    x: { ticks: { color: '#71717a' }, grid: { display: false } }
+                }
+            }
+        });
+
+        // --- Stock by Category ---
+        const categories = [...new Set(state.products.map(p => p.category))];
+        const stockByCat = categories.map(cat => {
+            return state.products.filter(p => p.category === cat).reduce((sum, p) => sum + (p.cost * p.qty), 0);
+        });
+
+        stockChartInstance = new Chart(stockCtx, {
+            type: 'doughnut',
+            data: {
+                labels: categories,
+                datasets: [{
+                    data: stockByCat,
+                    backgroundColor: ['#c8956c', '#4ade80', '#f87171', '#fbbf24', '#60a5fa', '#a78bfa', '#f472b6', '#34d399', '#fb923c', '#38bdf8'],
+                    borderColor: '#1c1c1f',
+                    borderWidth: 3
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { position: 'right', labels: { color: '#a1a1aa', boxWidth: 12 } } }
+            }
+        });
+    }
+
+    // ─── DASHBOARD ─────────────────────────────────────────────────────────────
+    function renderDashboard() {
+      const totalValue = state.products.reduce((s, p) => s + p.cost * p.qty, 0);
+      const lowStock = state.products.filter(p => p.qty <= p.minQty);
+      const now = new Date();
+      const currentMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+      const totalExpenses = state.expenses.filter(e => e.date && e.date.startsWith(currentMonth)).reduce((s, e) => s + e.amount, 0);
+      const todaySales = state.sales.filter(s => s.date === today()).reduce((sum, s) => sum + s.total, 0);
+
+      document.getElementById('stat-today-sales').textContent = fmtShort(todaySales);
+      document.getElementById('stat-low-stock').textContent = lowStock.length;
+      document.getElementById('stat-stock-value').textContent = fmtShort(totalValue);
+      document.getElementById('stat-expenses').textContent = fmtShort(totalExpenses);
+
+      // Dynamic greeting
+      const bizName = state.settings?.businessName || 'Banda Wholesalers';
+      const userName = authUser?.name || 'User';
+      const greetEl = document.getElementById('dashGreeting');
+      if (greetEl) greetEl.textContent = `Welcome back, ${userName} — ${bizName}`;
+
+      // Low Stock
+      const lowStockEl = document.getElementById('lowStockItems');
+      const lowStockAlert = document.getElementById('lowStockAlert');
+      if (lowStock.length > 0) {
+        lowStockAlert.style.display = 'block';
+        lowStockEl.innerHTML = lowStock.map(p => `<span class="badge badge-danger">${esc(p.name)} — ${p.qty} ${esc(p.unit)}s left</span>`).join('');
+      } else {
+        lowStockAlert.style.display = 'none';
+      }
+
+      // Movements
+      const movementsEl = document.getElementById('recentMovements');
+      movementsEl.innerHTML = state.movements.slice(0, 4).map(m => `
+        <div class="flex items-center justify-between">
+          <div><p class="text-sm font-medium" style="color: var(--fg-primary)">${esc(m.product)}</p><p class="text-xs" style="color: var(--fg-muted)">${esc(m.ref)} · ${m.date}</p></div>
+          <span class="badge ${m.type === 'IN' ? 'badge-success' : (m.type === 'OUT' || m.type === 'SALE') ? 'badge-danger' : 'badge-warning'}">${m.type} ${m.qty}</span>
+        </div>
+      `).join('');
+
+      // Top Products
+      const topEl = document.getElementById('topProducts');
+      const sorted = [...state.products].sort((a, b) => (b.cost * b.qty) - (a.cost * a.qty));
+      const maxVal = sorted[0] ? sorted[0].cost * sorted[0].qty : 1;
+      topEl.innerHTML = sorted.slice(0, 4).map(p => {
+        const val = p.cost * p.qty;
+        return `
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span style="color: var(--fg-secondary)">${esc(p.name)}</span><span style="color: var(--fg-muted)">${fmt(val)}</span></div>
+            <div class="progress-bar"><div class="progress-fill" style="width: ${Math.max(0, (val/maxVal)*100)}%; background: var(--accent)"></div></div>
+          </div>
+        `;
+      }).join('');
+
+      if (chartInitTimer) clearTimeout(chartInitTimer);
+      chartInitTimer = setTimeout(() => initCharts(), 80);
+    }
+
+    // ─── POS & SALES ───────────────────────────────────────────────────────────
+    function renderPOS() {
+        const grid = document.getElementById('posProductGrid');
+        grid.innerHTML = state.products.filter(p => p.qty > 0).map(p => `
+            <div class="product-tile" onclick="addToCart(${p.id})">
+                <div class="w-10 h-10 rounded-lg mx-auto mb-2 flex items-center justify-center" style="background: var(--bg-elevated)">
+                    <span class="text-lg">${esc((p.name || '').charAt(0))}</span>
+                </div>
+                <p class="font-semibold text-sm truncate">${esc(p.name)}</p>
+                <p class="text-xs" style="color: var(--fg-muted)">${p.qty} in stock</p>
+                <p class="font-bold mt-1" style="color: var(--accent)">${fmt(p.price)}</p>
+            </div>
+        `).join('');
+        updateCartUI();
+    }
+
+    function filterPOSProducts(query) {
+        const q = query.toLowerCase();
+        const filtered = state.products.filter(p => 
+            (p.qty > 0) && (p.name.toLowerCase().includes(q) || p.barcode === q || p.sku.toLowerCase().includes(q))
+        );
+        const grid = document.getElementById('posProductGrid');
+        grid.innerHTML = filtered.map(p => `
+            <div class="product-tile" onclick="addToCart(${p.id})">
+                <div class="w-10 h-10 rounded-lg mx-auto mb-2 flex items-center justify-center" style="background: var(--bg-elevated)"><span class="text-lg">${esc((p.name || '').charAt(0))}</span></div>
+                <p class="font-semibold text-sm truncate">${esc(p.name)}</p>
+                <p class="text-xs" style="color: var(--fg-muted)">${p.qty} in stock</p>
+                <p class="font-bold mt-1" style="color: var(--accent)">${fmt(p.price)}</p>
+            </div>
+        `).join('');
+    }
+
+    function handleBarcodeScan(e) {
+        if (e.key === 'Enter') {
+            const val = e.target.value;
+            const product = state.products.find(p => p.barcode === val || p.sku.toLowerCase() === val.toLowerCase());
+            if (product) {
+                addToCart(product.id);
+                e.target.value = '';
+            }
+        }
+    }
+
+    function addToCart(id) {
+        const product = state.products.find(p => p.id === id);
+        if (!product) return;
+        if (product.qty <= 0) { alert(`${product.name} is out of stock.`); return; }
+
+        const existing = cart.find(c => c.id === id);
+        if (existing) {
+            if (existing.qty < product.qty) existing.qty++;
+        } else {
+            cart.push({ ...product, qty: 1 });
+        }
+        updateCartUI();
+    }
+
+    function updateCartQty(id, delta) {
+        const item = cart.find(c => c.id === id);
+        if (!item) return;
+
+        const product = state.products.find(p => p.id === id);
+        const availableStock = product ? product.qty : 0;
+
+        const newQty = item.qty + delta;
+        if (newQty <= 0) {
+            cart = cart.filter(c => c.id !== id);
+        } else if (newQty > availableStock) {
+            alert(`Cannot add more — only ${availableStock} ${product?.unit || 'units'} available in stock.`);
+            return;
+        } else {
+            item.qty = newQty;
+        }
+        updateCartUI();
+    }
+
+    function removeFromCart(id) {
+        cart = cart.filter(c => c.id !== id);
+        updateCartUI();
+    }
+
+    function updateCartUI() {
+        const container = document.getElementById('posCartItems');
+        if (cart.length === 0) {
+            container.innerHTML = '<div class="text-center py-12" style="color: var(--fg-muted)">Cart is empty</div>';
+        } else {
+            container.innerHTML = cart.map(item => `
+                <div class="cart-item">
+                    <div class="cart-item-info">
+                        <p class="font-semibold text-sm">${esc(item.name)}</p>
+                        <p class="text-xs" style="color: var(--accent)">${fmt(item.price)} each</p>
+                    </div>
+                    <div class="cart-item-controls">
+                        <button class="qty-btn" onclick="updateCartQty(${item.id}, -1)">-</button>
+                        <span class="w-8 text-center font-bold">${item.qty}</span>
+                        <button class="qty-btn" onclick="updateCartQty(${item.id}, 1)">+</button>
+                    </div>
+                    <div class="font-bold text-right w-24">${fmt(item.price * item.qty)}</div>
+                    <button onclick="removeFromCart(${item.id})" class="text-gray-500 hover:text-red-500 ml-2">&times;</button>
+                </div>
+            `).join('');
+        }
+
+        const total = cart.reduce((s, i) => s + (i.price * i.qty), 0);
+        document.getElementById('cartSubtotal').textContent = fmt(total);
+        document.getElementById('cartTotal').textContent = fmt(total);
+    }
+
+    function completeSale() {
+        if (cart.length === 0) return alert('Cart is empty');
+
+        // Validate stock availability before processing
+        for (const item of cart) {
+            const product = state.products.find(p => p.id === item.id);
+            if (!product) { alert(`Product "${item.name}" no longer exists.`); return; }
+            if (product.qty < item.qty) { alert(`Insufficient stock for "${item.name}" — only ${product.qty} ${product.unit || 'units'} available, but ${item.qty} requested.`); return; }
+        }
+
+        const total = cart.reduce((s, i) => s + (i.price * i.qty), 0);
+        const saleDate = today();
+        let moveIdCounter = Date.now();
+
+        // Deduct stock and create movements
+        cart.forEach((item, index) => {
+            const product = state.products.find(p => p.id === item.id);
+            if (!product) return;
+            const productCost = product.cost || 0;
+
+            // Deduct stock
+            state.products = state.products.map(p => {
+                if (p.id === item.id) return { ...p, qty: Math.max(0, p.qty - item.qty) };
+                return p;
+            });
+
+            // Store historical cost on cart item for COGS accuracy
+            item.cost = productCost;
+        });
+
+        const ref = `INV-${Date.now()}`;
+
+        // Create all movements at once (preserving cart order)
+        const saleMovements = cart.map((item, index) => ({
+            id: moveIdCounter + index,
+            product: item.name,
+            type: 'SALE',
+            qty: item.qty,
+            reason: 'Sale',
+            ref: ref,
+            date: saleDate
+        }));
+        state.movements = [...saleMovements, ...state.movements];
+
+        // Save Sale
+        const sale = {
+            id: Date.now(),
+            date: saleDate,
+            items: cart.map(i => ({ ...i })), // snapshot with cost
+            total: total,
+            ref: ref
+        };
+        state.sales.push(sale);
+
+        // Post accounting entries (double-entry)
+        const revenueAccount = state.accounts.find(a => a.name === 'Sales Revenue');
+        const cashAccount = state.accounts.find(a => a.name === 'Cash in Hand');
+
+        if (revenueAccount) {
+            state.transactions.unshift({
+                id: Date.now() + 10000,
+                account: 'Sales Revenue',
+                type: 'Credit',
+                amount: total,
+                ref: ref,
+                date: saleDate
+            });
+            state.accounts = state.accounts.map(a =>
+                a.name === 'Sales Revenue' ? { ...a, balance: a.balance + total } : a
+            );
+        }
+        if (cashAccount) {
+            state.transactions.unshift({
+                id: Date.now() + 10001,
+                account: 'Cash in Hand',
+                type: 'Debit',
+                amount: total,
+                ref: ref,
+                date: saleDate
+            });
+            state.accounts = state.accounts.map(a =>
+                a.name === 'Cash in Hand' ? { ...a, balance: a.balance + total } : a
+            );
+        }
+
+        saveState();
+        printInvoice(sale);
+        cart = [];
+        renderPOS();
+        alert('Sale completed!');
+    }
+
+    function printInvoice(sale) {
+        const biz = state.settings?.businessName || 'Banda Wholesalers';
+        const bizAddr = state.settings?.businessAddress || 'Lilongwe, Area 25';
+        const bizPhone = state.settings?.businessPhone || '+265 999 100 200';
+        const printContent = `
+            <div style="font-family: monospace; width: 300px; margin: auto;">
+                <h2 style="text-align: center; border-bottom: 1px dashed #000; padding-bottom: 10px;">${esc(biz)}</h2>
+                <p style="text-align: center; font-size: 12px;">${esc(bizAddr)} | ${esc(bizPhone)}</p>
+                <p style="text-align: center; font-size: 12px;">Date: ${sale.date}</p>
+                <p style="text-align: center; font-size: 12px;">Ref: ${sale.ref}</p>
+                <hr style="border-top: 1px dashed #000; margin: 10px 0;">
+                <table style="width: 100%; font-size: 14px;">
+                    <thead>
+                        <tr><th align="left">Item</th><th align="center">Qty</th><th align="right">Price</th></tr>
+                    </thead>
+                    <tbody>
+                        ${sale.items.map(i => `<tr><td>${esc(i.name)}</td><td align="center">${i.qty}</td><td align="right">${fmt(i.price * i.qty)}</td></tr>`).join('')}
+                    </tbody>
+                </table>
+                <hr style="border-top: 1px dashed #000; margin: 10px 0;">
+                <h3 style="text-align: right;">Total: ${fmt(sale.total)}</h3>
+                <p style="text-align: center; margin-top: 20px; font-size: 12px;">Thank you for your business!</p>
+            </div>
+        `;
+        
+        const printContainer = document.getElementById('printArea');
+        printContainer.innerHTML = printContent;
+        printContainer.style.display = 'block';
+        window.print();
+        setTimeout(() => { printContainer.style.display = 'none'; }, 500);
+    }
+
+    // ─── PRODUCTS ──────────────────────────────────────────────────────────────
+    function renderProducts() {
+      document.getElementById('productsCount').textContent = state.products.length;
+      renderProductsTable(state.products);
+    }
+
+    function renderProductsTable(products) {
+      const tbody = document.getElementById('productsTable');
+      tbody.innerHTML = products.length === 0 ? '<tr><td colspan="9" class="text-center py-8" style="color: var(--fg-muted)">No products found</td></tr>' : products.map(p => `
+        <tr>
+          <td><div class="font-medium" style="color: var(--fg-primary)">${esc(p.name)}</div><div class="text-xs" style="color: var(--fg-muted)">${esc(p.barcode)}</div></td>
+          <td><code style="background: var(--bg-primary); padding: 2px 8px; border-radius: 4px; font-size: 11px;">${esc(p.sku)}</code></td>
+          <td>${esc(p.category)}</td>
+          <td>${esc(p.supplier)}</td>
+          <td>${fmt(p.cost)}</td>
+          <td>${fmt(p.price)}</td>
+          <td><span class="${p.qty <= p.minQty ? 'font-semibold' : ''}" style="color: ${p.qty <= p.minQty ? 'var(--danger)' : 'var(--fg-secondary)'}">${p.qty} ${esc(p.unit)}</span></td>
+          <td><span class="badge ${p.qty <= p.minQty ? 'badge-danger' : 'badge-success'}">${p.qty <= p.minQty ? 'Low Stock' : 'OK'}</span></td>
+          <td><div class="flex gap-2"><button onclick="editProduct(${p.id})" class="btn btn-ghost p-1" aria-label="Edit"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></button><button onclick="deleteProduct(${p.id})" class="btn btn-ghost p-1" aria-label="Delete"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button></div></td>
+        </tr>
+      `).join('');
+    }
+
+    function filterProducts(query) {
+      const q = query.toLowerCase();
+      const filtered = state.products.filter(p => p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q) || p.barcode.includes(q));
+      renderProductsTable(filtered);
+    }
+
+    function openProductModal(product = null) {
+      const isEdit = !!product;
+      const cats = ["Grains", "Oils", "Chemicals", "Beverages", "Dairy", "Other"];
+      openModal(isEdit ? 'Edit Product' : 'Add Product', `
+        <div class="grid grid-cols-2 gap-4">
+          <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Product Name</label><input type="text" class="input" id="prodName" value="${esc(product?.name || '')}"></div>
+          <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">SKU</label><input type="text" class="input" id="prodSku" value="${esc(product?.sku || '')}"></div>
+          <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Barcode</label><input type="text" class="input" id="prodBarcode" value="${esc(product?.barcode || '')}"></div>
+          <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Unit</label><input type="text" class="input" id="prodUnit" value="${esc(product?.unit || 'Bag')}"></div>
+          <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Category</label><select class="input" id="prodCategory">${cats.map(c => `<option ${product?.category === c ? 'selected' : ''}>${c}</option>`).join('')}</select></div>
+          <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Supplier</label><select class="input" id="prodSupplier">${state.suppliers.map(s => `<option ${product?.supplier === s.name ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select></div>
+          <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Cost Price (MK)</label><input type="number" class="input" id="prodCost" value="${product?.cost || ''}"></div>
+          <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Selling Price (MK)</label><input type="number" class="input" id="prodPrice" value="${product?.price || ''}"></div>
+          <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Stock Quantity</label><input type="number" class="input" id="prodQty" value="${product?.qty || ''}"></div>
+          <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Min Stock Level</label><input type="number" class="input" id="prodMinQty" value="${product?.minQty || ''}"></div>
+        </div>
+        <div class="flex gap-3 mt-4"><button onclick="closeModal()" class="btn btn-secondary flex-1">Cancel</button><button onclick="saveProduct(${product?.id || null})" class="btn btn-primary flex-1">Save Product</button></div>
+      `);
+    }
+
+    function saveProduct(id) {
+      const form = {
+        name: document.getElementById('prodName').value.trim(),
+        sku: document.getElementById('prodSku').value.trim(),
+        barcode: document.getElementById('prodBarcode').value.trim(),
+        unit: document.getElementById('prodUnit').value.trim() || 'Bag',
+        category: document.getElementById('prodCategory').value,
+        supplier: document.getElementById('prodSupplier').value,
+        cost: parseFloat(document.getElementById('prodCost').value) || 0,
+        price: parseFloat(document.getElementById('prodPrice').value) || 0,
+        qty: parseInt(document.getElementById('prodQty').value) || 0,
+        minQty: parseInt(document.getElementById('prodMinQty').value) || 0
+      };
+
+      if (!form.name || !form.sku) { alert('Name and SKU are required'); return; }
+      if (form.cost < 0 || form.price < 0) { alert('Cost and selling price cannot be negative'); return; }
+      if (form.qty < 0 || form.minQty < 0) { alert('Quantity values cannot be negative'); return; }
+
+      // Check for duplicate SKU
+      const duplicate = state.products.find(p => p.sku.toLowerCase() === form.sku.toLowerCase() && p.id !== id);
+      if (duplicate) { alert(`SKU "${form.sku}" is already used by product "${duplicate.name}". Please use a unique SKU.`); return; }
+
+      if (id) {
+        state.products = state.products.map(p => p.id === id ? {...p, ...form} : p);
+      } else {
+        state.products.push({...form, id: Date.now()});
+      }
+
+      saveState();
+      closeModal();
+      renderProducts();
+      updateAlertBanner();
+    }
+
+    function editProduct(id) {
+      const product = state.products.find(p => p.id === id);
+      if(product) openProductModal(product);
+    }
+
+    function deleteProduct(id) {
+      const product = state.products.find(p => p.id === id);
+      if (!product) return;
+
+      // Check if product has been sold
+      const hasSales = state.sales.some(sale =>
+        sale.items.some(item => item.id === id)
+      );
+      if (hasSales) {
+        alert(`Cannot delete "${product.name}" — it has existing sales records. Deactivating instead.`);
+        // Set quantity to 0 and mark as inactive instead of deleting
+        state.products = state.products.map(p =>
+          p.id === id ? { ...p, qty: 0 } : p
+        );
+        saveState();
+        renderProducts();
+        updateAlertBanner();
+        return;
+      }
+
+      if(confirm(`Delete "${product.name}"? This cannot be undone.`)) {
+        state.products = state.products.filter(p => p.id !== id);
+        saveState();
+        renderProducts();
+        updateAlertBanner();
+      }
+    }
+
+    // ─── STOCK MOVEMENT ────────────────────────────────────────────────────────
+    function renderMovements() {
+      const filtered = movementFilter === 'ALL' ? state.movements : state.movements.filter(m => m.type === movementFilter);
+      const tbody = document.getElementById('movementsTable');
+      tbody.innerHTML = filtered.length === 0 ? '<tr><td colspan="6" class="text-center py-8" style="color: var(--fg-muted)">No movements found</td></tr>' : filtered.map(m => `
+        <tr>
+          <td style="color: var(--fg-muted)">${m.date}</td>
+          <td><span class="font-medium" style="color: var(--fg-primary)">${esc(m.product)}</span></td>
+          <td><span class="badge ${m.type === 'IN' ? 'badge-success' : (m.type === 'OUT' || m.type === 'SALE') ? 'badge-danger' : 'badge-warning'}">${m.type}</span></td>
+          <td class="font-semibold">${m.qty}</td>
+          <td>${esc(m.reason)}</td>
+          <td><code style="background: var(--bg-primary); padding: 2px 8px; border-radius: 4px; font-size: 11px;">${esc(m.ref)}</code></td>
+        </tr>
+      `).join('');
+    }
+
+    function filterMovements(type) {
+      movementFilter = type;
+      document.querySelectorAll('#movementFilters button').forEach(btn => {
+        btn.classList.toggle('btn-secondary', btn.dataset.filter === type);
+        btn.classList.toggle('btn-ghost', btn.dataset.filter !== type);
+        btn.classList.toggle('active', btn.dataset.filter === type);
+      });
+      renderMovements();
+    }
+
+    function openMovementModal() {
+      openModal('Record Stock Movement', `
+        <div class="space-y-4">
+          <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Product</label><select class="input" id="movProduct"><option value="">-- Select Product --</option>${state.products.map(p => `<option>${esc(p.name)}</option>`).join('')}</select></div>
+          <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Movement Type</label><select class="input" id="movType"><option>IN</option><option>OUT</option><option>ADJUST</option></select></div>
+          <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Quantity</label><input type="number" class="input" id="movQty"></div>
+          <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Reason</label><input type="text" class="input" id="movReason" placeholder="e.g. Purchase, Sale, Damaged"></div>
+          <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Reference No.</label><input type="text" class="input" id="movRef" placeholder="e.g. PO-2025-001"></div>
+        </div>
+        <div class="flex gap-3 mt-4"><button onclick="closeModal()" class="btn btn-secondary flex-1">Cancel</button><button onclick="saveMovement()" class="btn btn-primary flex-1">Record</button></div>
+      `);
+    }
+
+    function saveMovement() {
+      const productName = document.getElementById('movProduct').value;
+      const type = document.getElementById('movType').value;
+      const qtyEntered = parseInt(document.getElementById('movQty').value) || 0;
+      const reason = document.getElementById('movReason').value;
+      const ref = document.getElementById('movRef').value;
+
+      if (!productName || !qtyEntered) { alert('Product and Quantity are required'); return; }
+      if (qtyEntered <= 0) { alert('Quantity must be greater than zero'); return; }
+
+      // For OUT movements, verify sufficient stock
+      if (type === 'OUT') {
+        const product = state.products.find(p => p.name === productName);
+        if (product && product.qty < qtyEntered) {
+          alert(`Insufficient stock. Only ${product.qty} ${product.unit || 'units'} available, but ${qtyEntered} requested.`);
+          return;
+        }
+      }
+
+      state.movements.unshift({id: Date.now(), product: productName, type, qty: qtyEntered, reason, ref, date: today()});
+
+      const qtyChange = type === 'OUT' ? -qtyEntered : qtyEntered;
+      state.products = state.products.map(p => p.name === productName ? {...p, qty: Math.max(0, p.qty + qtyChange)} : p);
+
+      // If this is an IN movement (purchase), update supplier balance
+      if (type === 'IN' && ref) {
+        const product = state.products.find(p => p.name === productName);
+        if (product) {
+          const supplier = state.suppliers.find(s => s.name === product.supplier);
+          if (supplier) {
+            const purchaseAmount = product.cost * qtyEntered;
+            state.suppliers = state.suppliers.map(s =>
+              s.id === supplier.id ? { ...s, balance: s.balance + purchaseAmount } : s
+            );
+          }
+        }
+      }
+
+      saveState();
+      closeModal();
+      renderMovements();
+      updateAlertBanner();
+    }
+
+    // ─── STOCK COUNTING ────────────────────────────────────────────────────────
+    function renderStockCount() {
+      const tbody = document.getElementById('stockCountTable');
+      tbody.innerHTML = state.products.map(p => `
+        <tr>
+          <td><span class="font-medium" style="color: var(--fg-primary)">${esc(p.name)}</span></td>
+          <td><code style="background: var(--bg-primary); padding: 2px 8px; border-radius: 4px; font-size: 11px;">${esc(p.sku)}</code></td>
+          <td><span class="font-semibold">${p.qty} ${esc(p.unit)}</span></td>
+          <td><input type="number" class="input" style="width: 100px; text-align: center;" placeholder="${p.qty}" value="${stockCounts[p.id] || ''}" oninput="stockCounts[${p.id}] = this.value"></td>
+        </tr>
+      `).join('');
+    }
+
+    function submitStockCount() {
+      stockResults = state.products.map(p => {
+        const raw = stockCounts[p.id];
+        const counted = (raw !== undefined && raw !== "" && !isNaN(parseInt(raw))) ? parseInt(raw) : p.qty;
+        return { ...p, counted, diff: counted - p.qty };
+      });
+
+      document.getElementById('stockCountForm').style.display = 'none';
+      document.getElementById('stockCountResults').style.display = 'block';
+
+      const tbody = document.getElementById('stockResultsTable');
+      tbody.innerHTML = stockResults.map(r => `
+        <tr>
+          <td><span class="font-medium">${esc(r.name)}</span></td>
+          <td>${r.qty}</td>
+          <td>${r.counted}</td>
+          <td><span style="color: ${r.diff < 0 ? 'var(--danger)' : r.diff > 0 ? 'var(--success)' : 'var(--fg-muted)'}">${r.diff > 0 ? '+' : ''}${r.diff}</span></td>
+          <td><span class="badge ${r.diff === 0 ? 'badge-success' : r.diff > 0 ? 'badge-info' : 'badge-danger'}">${r.diff === 0 ? 'Matched' : r.diff > 0 ? 'Surplus' : 'Shortage'}</span></td>
+        </tr>
+      `).join('');
+    }
+
+    function recountStock() {
+      stockCounts = {};
+      stockResults = [];
+      document.getElementById('stockCountForm').style.display = 'block';
+      document.getElementById('stockCountResults').style.display = 'none';
+      renderStockCount();
+    }
+
+    function applyAdjustments() {
+      const diffs = stockResults.filter(r => r.diff !== 0);
+      
+      state.products = state.products.map(p => {
+        const r = diffs.find(d => d.id === p.id);
+        return r ? {...p, qty: r.counted} : p;
+      });
+
+      diffs.forEach(r => {
+        state.movements.unshift({
+          id: Date.now() + r.id,
+          product: r.name,
+          type: 'ADJUST',
+          qty: Math.abs(r.diff),
+          reason: 'Stock Count Adjustment',
+          ref: `SC-${today()}`,
+          date: today()
+        });
+      });
+
+      saveState();
+      recountStock();
+    }
+
+    // ─── SUPPLIERS ─────────────────────────────────────────────────────────────
+    function renderSuppliers() {
+      document.getElementById('suppliersCount').textContent = state.suppliers.length;
+      const grid = document.getElementById('suppliersGrid');
+      grid.innerHTML = state.suppliers.length === 0 ? '<div class="card p-8 col-span-full text-center" style="color: var(--fg-muted)">No suppliers added yet</div>' : state.suppliers.map(s => `
+        <div class="card p-5">
+          <div class="flex items-start justify-between mb-3">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm" style="background: linear-gradient(135deg, var(--accent), #a67c52); color: #0a0a0a;">${esc(s.name[0])}</div>
+            <div class="flex items-center gap-2">
+              <span class="badge ${s.balance > 0 ? 'badge-warning' : 'badge-success'}">${s.balance > 0 ? 'Owes Balance' : 'Clear'}</span>
+              <button onclick="editSupplier(${s.id})" class="btn btn-ghost p-1" aria-label="Edit"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></button>
+              <button onclick="deleteSupplier(${s.id})" class="btn btn-ghost p-1" aria-label="Delete"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>
+            </div>
+          </div>
+          <h3 class="font-semibold mb-1" style="color: var(--fg-primary)">${esc(s.name)}</h3>
+          <p class="text-xs mb-0.5" style="color: var(--fg-muted)">${esc(s.phone)}</p>
+          <p class="text-xs mb-0.5" style="color: var(--fg-muted)">${esc(s.email)}</p>
+          <p class="text-xs mb-3" style="color: var(--fg-muted)">${esc(s.address)}</p>
+          ${s.balance > 0 ? `<div class="p-2 rounded-lg text-xs font-semibold" style="background: rgba(251, 191, 36, 0.1); color: var(--warning)">Balance owed: ${fmt(s.balance)}</div>` : ''}
+        </div>
+      `).join('');
+    }
+
+    function openSupplierModal(supplier = null) {
+      const isEdit = !!supplier;
+      openModal(isEdit ? 'Edit Supplier' : 'Add Supplier', `
+        <div class="space-y-4">
+          <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Supplier Name</label><input type="text" class="input" id="suppName" value="${esc(supplier?.name || '')}"></div>
+          <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Phone</label><input type="text" class="input" id="suppPhone" value="${esc(supplier?.phone || '')}" placeholder="+265 999 000 000"></div>
+          <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Email</label><input type="email" class="input" id="suppEmail" value="${esc(supplier?.email || '')}"></div>
+          <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Address</label><input type="text" class="input" id="suppAddress" value="${esc(supplier?.address || '')}"></div>
+          <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Opening Balance (MK)</label><input type="number" class="input" id="suppBalance" value="${supplier?.balance ?? 0}"></div>
+        </div>
+        <div class="flex gap-3 mt-4"><button onclick="closeModal()" class="btn btn-secondary flex-1">Cancel</button><button onclick="saveSupplier(${supplier?.id || null})" class="btn btn-primary flex-1">Save</button></div>
+      `);
+    }
+
+    function editSupplier(id) {
+      const supplier = state.suppliers.find(s => s.id === id);
+      if (supplier) openSupplierModal(supplier);
+    }
+
+    function deleteSupplier(id) {
+      const supplier = state.suppliers.find(s => s.id === id);
+      if (!supplier) return;
+      if (confirm(`Delete supplier "${supplier.name}"? Products linked to this supplier will keep their current assignment.`)) {
+        state.suppliers = state.suppliers.filter(s => s.id !== id);
+        saveState();
+        renderSuppliers();
+      }
+    }
+
+    function saveSupplier(id) {
+      const name = document.getElementById('suppName').value.trim();
+      if (!name) { alert('Name is required'); return; }
+
+      const supplierData = {
+        name,
+        phone: document.getElementById('suppPhone').value.trim(),
+        email: document.getElementById('suppEmail').value.trim(),
+        address: document.getElementById('suppAddress').value.trim(),
+        balance: parseFloat(document.getElementById('suppBalance').value) || 0
+      };
+
+      if (id) {
+        state.suppliers = state.suppliers.map(s => s.id === id ? { ...s, ...supplierData } : s);
+      } else {
+        state.suppliers.push({ id: Date.now(), ...supplierData });
+      }
+
+      saveState();
+      closeModal();
+      renderSuppliers();
+    }
+
+    // ─── EXPENSES ──────────────────────────────────────────────────────────────
+    function renderExpenses() {
+      const total = state.expenses.reduce((s, e) => s + e.amount, 0);
+      document.getElementById('totalExpenses').textContent = fmt(total);
+
+      const cats = ["Utilities", "Transport", "Payroll", "Rent", "Office", "Marketing", "Other"];
+      const byCat = cats.reduce((acc, c) => {
+        acc[c] = state.expenses.filter(e => e.category === c).reduce((s, e) => s + e.amount, 0);
+        return acc;
+      }, {});
+
+      const catEl = document.getElementById('expenseCategories');
+      catEl.innerHTML = cats.filter(c => byCat[c] > 0).map(c => `
+        <div class="card p-4 text-center"><p class="text-xs mb-1" style="color: var(--fg-muted)">${c}</p><p class="font-semibold text-sm" style="color: var(--fg-primary)">${fmtShort(byCat[c])}</p></div>
+      `).join('');
+
+      const tbody = document.getElementById('expensesTable');
+      tbody.innerHTML = state.expenses.length === 0 ? '<tr><td colspan="6" class="text-center py-8" style="color: var(--fg-muted)">No expenses recorded</td></tr>' : [...state.expenses].sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id).map(e => `
+        <tr>
+          <td style="color: var(--fg-muted)">${e.date}</td>
+          <td><span class="font-medium" style="color: var(--fg-primary)">${esc(e.title)}</span></td>
+          <td><span class="badge badge-info">${esc(e.category)}</span></td>
+          <td>${esc(e.method)}</td>
+          <td><span class="font-semibold" style="color: var(--danger)">${fmt(e.amount)}</span></td>
+          <td><div class="flex gap-1"><button onclick="editExpense(${e.id})" class="btn btn-ghost p-1" aria-label="Edit"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></button><button onclick="deleteExpense(${e.id})" class="btn btn-ghost p-1" aria-label="Delete"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button></div></td>
+        </tr>
+      `).join('');
+    }
+
+    function deleteExpense(id) {
+      if(confirm('Delete this expense?')) {
+        state.expenses = state.expenses.filter(e => e.id !== id);
+        saveState();
+        renderExpenses();
+      }
+    }
+
+    function editExpense(id) {
+      const expense = state.expenses.find(e => e.id === id);
+      if (expense) openExpenseModal(expense);
+    }
+
+    function openExpenseModal(expense = null) {
+      const cats = ["Utilities", "Transport", "Payroll", "Rent", "Office", "Marketing", "Other"];
+      const methods = ["Cash", "Bank Transfer", "Mobile Money", "Cheque"];
+      openModal(expense ? 'Edit Expense' : 'Add Expense', `
+        <div class="space-y-4">
+          <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Title</label><input type="text" class="input" id="expTitle" value="${esc(expense?.title || '')}" placeholder="e.g. Electricity Bill"></div>
+          <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Amount (MK)</label><input type="number" class="input" id="expAmount" value="${expense?.amount || ''}"></div>
+          <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Category</label><select class="input" id="expCategory">${cats.map(c => `<option ${expense?.category === c ? 'selected' : ''}>${c}</option>`).join('')}</select></div>
+          <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Payment Method</label><select class="input" id="expMethod">${methods.map(m => `<option ${expense?.method === m ? 'selected' : ''}>${m}</option>`).join('')}</select></div>
+          <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Date</label><input type="date" class="input" id="expDate" value="${expense?.date || today()}"></div>
+        </div>
+        <div class="flex gap-3 mt-4"><button onclick="closeModal()" class="btn btn-secondary flex-1">Cancel</button><button onclick="saveExpense(${expense?.id || null})" class="btn btn-primary flex-1">Save</button></div>
+      `);
+    }
+
+    function saveExpense(id) {
+      const title = document.getElementById('expTitle').value.trim();
+      const amount = parseFloat(document.getElementById('expAmount').value) || 0;
+      
+      if (!title) { alert('Title is required'); return; }
+      if (!amount || amount <= 0) { alert('A positive amount is required'); return; }
+
+      const method = document.getElementById('expMethod').value;
+      const date = document.getElementById('expDate').value;
+      const category = document.getElementById('expCategory').value;
+
+      if (id) {
+        // Editing existing expense
+        state.expenses = state.expenses.map(e => e.id === id ? { ...e, title, amount, category, method, date } : e);
+      } else {
+        // New expense
+        state.expenses.push({ id: Date.now(), title, amount, category, method, date });
+
+        // Post double-entry accounting for new expenses only
+        const accountName = method === 'Cash' ? 'Cash in Hand' : (method === 'Mobile Money' ? 'Cash in Hand' : 'Bank Account (NBS)');
+        // Credit the cash/bank account (money going out)
+        state.transactions.unshift({ id: Date.now() + 50000, account: accountName, type: 'Credit', amount, ref: `EXP-${title}`, date });
+        state.accounts = state.accounts.map(a => a.name === accountName ? { ...a, balance: a.balance - amount } : a);
+        // Debit an expense account (expense increases)
+        let expAccount = state.accounts.find(a => a.name === 'Operating Expenses');
+        if (!expAccount) {
+          expAccount = { id: Date.now() + 99999, name: 'Operating Expenses', type: 'Expense', balance: 0 };
+          state.accounts.push(expAccount);
+        }
+        state.transactions.unshift({ id: Date.now() + 50001, account: 'Operating Expenses', type: 'Debit', amount, ref: `EXP-${title}`, date });
+        state.accounts = state.accounts.map(a => a.name === 'Operating Expenses' ? { ...a, balance: a.balance + amount } : a);
+      }
+      
+      saveState();
+      closeModal();
+      renderExpenses();
+    }
+
+    // ─── ACCOUNTING ────────────────────────────────────────────────────────────
+    function renderAccounting() {
+      const assets = state.accounts.filter(a => a.type === 'Asset');
+      const liabilities = state.accounts.filter(a => a.type === 'Liability');
+      const income = state.accounts.filter(a => a.type === 'Income');
+
+      document.getElementById('assetsList').innerHTML = assets.map(a => `<div class="flex justify-between py-2 border-b" style="border-color: var(--border)"><span class="text-sm" style="color: var(--fg-secondary)">${esc(a.name)}</span><span class="font-semibold text-sm" style="color: var(--success)">${fmt(a.balance)}</span></div>`).join('');
+      document.getElementById('liabilitiesList').innerHTML = liabilities.map(a => `<div class="flex justify-between py-2 border-b" style="border-color: var(--border)"><span class="text-sm" style="color: var(--fg-secondary)">${esc(a.name)}</span><span class="font-semibold text-sm" style="color: var(--danger)">${fmt(a.balance)}</span></div>`).join('');
+      document.getElementById('incomeList').innerHTML = income.map(a => `<div class="flex justify-between py-2 border-b" style="border-color: var(--border)"><span class="text-sm" style="color: var(--fg-secondary)">${esc(a.name)}</span><span class="font-semibold text-sm" style="color: var(--accent)">${fmt(a.balance)}</span></div>`).join('');
+
+      // Show Expense accounts under Income section
+      const expenses = state.accounts.filter(a => a.type === 'Expense');
+      if (expenses.length > 0) {
+        document.getElementById('incomeList').innerHTML += expenses.map(a => `<div class="flex justify-between py-2 border-b" style="border-color: var(--border)"><span class="text-sm" style="color: var(--fg-secondary)">${esc(a.name)}</span><span class="font-semibold text-sm" style="color: var(--danger)">${fmt(a.balance)}</span></div>`).join('');
+      }
+
+      const tbody = document.getElementById('transactionsTable');
+      tbody.innerHTML = state.transactions.length === 0 ? '<tr><td colspan="5" class="text-center py-8" style="color: var(--fg-muted)">No transactions recorded</td></tr>' : state.transactions.map(t => `
+        <tr>
+          <td style="color: var(--fg-muted)">${t.date}</td>
+          <td>${esc(t.account)}</td>
+          <td><span class="badge ${t.type === 'Credit' ? 'badge-success' : 'badge-danger'}">${t.type}</span></td>
+          <td><span class="font-semibold" style="color: ${t.type === 'Credit' ? 'var(--success)' : 'var(--danger)'}">${fmt(t.amount)}</span></td>
+          <td>${esc(t.ref)}</td>
+        </tr>
+      `).join('');
+    }
+
+    function openTransactionModal() {
+      openModal('New Transaction', `
+        <div class="space-y-4">
+          <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Account</label><select class="input" id="txAccount">${state.accounts.map(a => `<option>${esc(a.name)}</option>`).join('')}</select></div>
+          <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Type</label><select class="input" id="txType"><option>Credit</option><option>Debit</option></select></div>
+          <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Amount (MK)</label><input type="number" class="input" id="txAmount"></div>
+          <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Reference</label><input type="text" class="input" id="txRef"></div>
+          <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Date</label><input type="date" class="input" id="txDate" value="${today()}"></div>
+        </div>
+        <div class="flex gap-3 mt-4"><button onclick="closeModal()" class="btn btn-secondary flex-1">Cancel</button><button onclick="saveTransaction()" class="btn btn-primary flex-1">Post Transaction</button></div>
+      `);
+    }
+
+    function saveTransaction() {
+      const account = document.getElementById('txAccount').value;
+      const type = document.getElementById('txType').value;
+      const amount = parseFloat(document.getElementById('txAmount').value) || 0;
+      const ref = document.getElementById('txRef').value;
+      const date = document.getElementById('txDate').value;
+
+      if (!amount || amount <= 0) { alert('A positive amount is required'); return; }
+
+      state.transactions.unshift({id: Date.now(), account, type, amount, ref, date});
+      state.accounts = state.accounts.map(a => {
+        if (a.name !== account) return a;
+        // Assets: Debit increases, Credit decreases. Liabilities/Income: opposite.
+        const debitIncreases = (a.type === 'Asset' || a.type === 'Expense');
+        return {...a, balance: type === 'Debit'
+          ? (debitIncreases ? a.balance + amount : a.balance - amount)
+          : (debitIncreases ? a.balance - amount : a.balance + amount)
+        };
+      });
+
+      saveState();
+      closeModal();
+      renderAccounting();
+    }
+
+    // ─── REPORTS ───────────────────────────────────────────────────────────────
+    function renderReports() {
+      // Calculate Sales Revenue
+      const totalRevenue = state.sales.reduce((s, sale) => s + sale.total, 0);
+
+      // Calculate COGS using historical cost stored at time of sale
+      const totalCOGS = state.sales.reduce((total, sale) => {
+          return total + sale.items.reduce((itemTotal, item) => {
+              // Use historical cost from sale snapshot if available, else fall back to current product cost
+              const cost = (item.cost !== undefined && item.cost !== null) ? item.cost : (state.products.find(p => p.id === item.id)?.cost || 0);
+              return itemTotal + (cost * item.qty);
+          }, 0);
+      }, 0);
+
+      const grossProfit = totalRevenue - totalCOGS;
+      const totalExp = state.expenses.reduce((s, e) => s + e.amount, 0);
+      const netProfit = grossProfit - totalExp;
+      const lowStock = state.products.filter(p => p.qty <= p.minQty);
+
+      document.getElementById('report-revenue').textContent = fmt(totalRevenue);
+      document.getElementById('report-cogs').textContent = `(${fmt(totalCOGS)})`;
+      document.getElementById('report-gross-profit').textContent = fmt(grossProfit);
+      document.getElementById('report-expenses').textContent = `(${fmt(totalExp)})`;
+      document.getElementById('report-net-profit').textContent = fmt(netProfit);
+      document.getElementById('report-low-count').textContent = lowStock.length;
+
+      const lowEl = document.getElementById('reportLowStock');
+      lowEl.innerHTML = lowStock.length === 0 
+        ? '<p class="text-sm" style="color: var(--fg-muted)">All products are well-stocked</p>' 
+        : lowStock.map(p => `<div class="flex justify-between text-sm"><span style="color: var(--fg-secondary)">${esc(p.name)}</span><span style="color: var(--danger)">${p.qty}/${p.minQty} min</span></div>`).join('');
+
+      const expByCat = state.expenses.reduce((acc, e) => { acc[e.category] = (acc[e.category] || 0) + e.amount; return acc; }, {});
+      const breakdownEl = document.getElementById('reportExpenseBreakdown');
+      breakdownEl.innerHTML = Object.entries(expByCat).map(([cat, amt]) => `
+        <div>
+          <div class="flex justify-between text-xs mb-1"><span style="color: var(--fg-muted)">${esc(cat)}</span><span style="color: var(--fg-secondary)">${fmt(amt)}</span></div>
+          <div class="progress-bar"><div class="progress-fill" style="width: ${totalExp > 0 ? (amt/totalExp)*100 : 0}%; background: var(--warning)"></div></div>
+        </div>
+      `).join('');
+    }
+
+    // ─── USERS ─────────────────────────────────────────────────────────────────
+    function renderUsers() {
+      const roleColor = {Admin: 'badge-info', Storekeeper: 'badge-success', Accountant: 'badge-warning'};
+      const tbody = document.getElementById('usersTable');
+      tbody.innerHTML = state.users.map(u => `
+        <tr>
+          <td><div class="flex items-center gap-3"><div class="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold" style="background: linear-gradient(135deg, var(--accent), #a67c52); color: #0a0a0a;">${esc(u.name[0])}</div><span class="font-medium" style="color: var(--fg-primary)">${esc(u.name)}</span></div></td>
+          <td>${esc(u.email)}</td>
+          <td><span class="badge ${roleColor[u.role] || 'badge-info'}">${esc(u.role)}</span></td>
+          <td><span class="badge ${u.status === 'Active' ? 'badge-success' : 'badge-danger'}">${esc(u.status)}</span></td>
+          <td>
+            <div class="flex gap-1">
+              <button onclick="openUserModal(${u.id})" class="btn btn-ghost p-1" aria-label="Edit"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></button>
+              <button onclick="toggleUserStatus(${u.id})" class="btn btn-ghost p-1" aria-label="Toggle Status"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg></button>
+              <button onclick="deleteUser(${u.id})" class="btn btn-ghost p-1" aria-label="Delete"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function openUserModal(id) {
+      const user = id ? state.users.find(u => u.id === id) : null;
+      openModal(user ? 'Edit User' : 'Add User', `
+        <div class="space-y-4">
+          <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Full Name</label><input type="text" class="input" id="userName" value="${esc(user?.name || '')}"></div>
+          <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Email</label><input type="email" class="input" id="userEmail" value="${esc(user?.email || '')}"></div>
+          <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Role</label><select class="input" id="userRole"><option ${user?.role === 'Admin' ? 'selected' : ''}>Admin</option><option ${user?.role === 'Storekeeper' ? 'selected' : ''}>Storekeeper</option><option ${user?.role === 'Accountant' ? 'selected' : ''}>Accountant</option></select></div>
+        </div>
+        <div class="flex gap-3 mt-4"><button onclick="closeModal()" class="btn btn-secondary flex-1">Cancel</button><button onclick="saveUser(${user?.id || null})" class="btn btn-primary flex-1">Save</button></div>
+      `);
+    }
+
+    function saveUser(id) {
+      const name = document.getElementById('userName').value.trim();
+      const email = document.getElementById('userEmail').value.trim();
+      const role = document.getElementById('userRole').value;
+      if (!name || !email) { alert('Name and email are required'); return; }
+
+      // Check for duplicate email
+      const dup = state.users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.id !== id);
+      if (dup) { alert('A user with that email already exists'); return; }
+
+      if (id) {
+        state.users = state.users.map(u => u.id === id ? { ...u, name, email, role } : u);
+      } else {
+        state.users.push({ id: Date.now(), name, email, role, status: 'Active' });
+      }
+      saveState();
+      closeModal();
+      renderUsers();
+    }
+
+    function toggleUserStatus(id) {
+      const user = state.users.find(u => u.id === id);
+      if (!user) return;
+      const newStatus = user.status === 'Active' ? 'Inactive' : 'Active';
+      if (confirm(`Set ${user.name} to ${newStatus}?`)) {
+        state.users = state.users.map(u => u.id === id ? { ...u, status: newStatus } : u);
+        saveState();
+        renderUsers();
+      }
+    }
+
+    function deleteUser(id) {
+      const user = state.users.find(u => u.id === id);
+      if (!user) return;
+      if (id === authUser?.id) { alert('Cannot delete your own account while logged in.'); return; }
+      if (state.users.length <= 1) { alert('Cannot delete the last user'); return; }
+      if (confirm(`Delete user "${user.name}"? This cannot be undone.`)) {
+        state.users = state.users.filter(u => u.id !== id);
+        saveState();
+        renderUsers();
+      }
+    }
+
+    // ─── SETTINGS ──────────────────────────────────────────────────────────────
+    function renderSettings() {
+      const s = state.settings || {};
+      if (s.businessName !== undefined) document.getElementById('settBizName').value = s.businessName;
+      if (s.businessPhone !== undefined) document.getElementById('settBizPhone').value = s.businessPhone;
+      if (s.businessEmail !== undefined) document.getElementById('settBizEmail').value = s.businessEmail;
+      if (s.businessAddress !== undefined) document.getElementById('settBizAddress').value = s.businessAddress;
+    }
+
+    function saveSettings() {
+      const name = document.getElementById('settBizName').value.trim();
+      if (!name) { alert('Business name is required'); return; }
+
+      state.settings = {
+        businessName: name,
+        businessPhone: document.getElementById('settBizPhone').value.trim(),
+        businessEmail: document.getElementById('settBizEmail').value.trim(),
+        businessAddress: document.getElementById('settBizAddress').value.trim()
+      };
+
+      saveState();
+      // Update sidebar brand
+      const brandSub = document.querySelector('.sidebar-brand p:nth-child(2)');
+      if (brandSub) brandSub.textContent = name;
+      // Update dashboard greeting
+      const dashGreeting = document.querySelector('#page-dashboard .mb-6 p');
+      if (dashGreeting && dashGreeting.style.color) dashGreeting.textContent = `Welcome back, ${authUser?.name || 'User'} — ${name}`;
+      alert('Settings saved successfully!');
+    }
+
+    // ─── DATA MANAGEMENT ───────────────────────────────────────────────────────
+    function exportData() {
+        const dataStr = JSON.stringify(state, null, 2);
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `stockmw-backup-${today()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    function importData(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const importedState = JSON.parse(e.target.result);
+
+                // Validate required structure
+                const requiredKeys = ['products', 'suppliers', 'expenses', 'movements', 'accounts', 'transactions', 'users', 'sales'];
+                const missingKeys = requiredKeys.filter(k => !Array.isArray(importedState[k]));
+                if (missingKeys.length > 0) {
+                    alert(`Invalid backup file. Missing or invalid sections: ${missingKeys.join(', ')}`);
+                    return;
+                }
+
+                if (window.confirm('This will overwrite all existing data. Are you sure?')) {
+                    state = importedState;
+                    saveState();
+                    cart = [];
+                    navigateTo('dashboard');
+                    alert('Data imported successfully!');
+                }
+            } catch (err) {
+                alert('Invalid backup file. Could not parse JSON.');
+            }
+        };
+        reader.readAsText(file);
+        event.target.value = ''; // Reset file input
+    }
+
+    // ─── INIT ──────────────────────────────────────────────────────────────────
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeModal();
+    });
+  </script>
+</body>
+</html>
