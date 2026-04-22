@@ -297,7 +297,7 @@
         </div>
         <div>
           <p class="font-display font-bold text-sm">StockMW</p>
-          <p class="text-xs" style="color: var(--accent)">Banda Wholesalers</p>
+          <p class="text-xs" style="color: var(--accent)">StockMW</p>
         </div>
       </div>
 
@@ -352,7 +352,7 @@
         <div class="user-card">
           <div class="user-avatar">C</div>
           <div class="flex-1 min-w-0">
-            <p class="text-sm font-medium truncate">Chisomo Banda</p>
+            <p class="text-sm font-medium truncate">Berlin</p>
             <p class="text-xs truncate" style="color: var(--accent)">Admin</p>
           </div>
         </div>
@@ -498,8 +498,15 @@
         <div class="mb-6"><h1 class="font-display text-2xl font-bold mb-1">Physical Stock Count</h1><p style="color: var(--fg-muted)">Compare system quantities with physical counts</p></div>
         <div id="stockCountForm">
           <div class="card mb-4">
-            <div class="p-4 border-b" style="border-color: var(--border)"><p class="text-sm" style="color: var(--fg-muted)">Enter the physically counted quantity for each product. Leave blank to keep system quantity.</p></div>
-            <div class="table-container"><table><thead><tr><th>Product</th><th>SKU</th><th>System Qty</th><th>Counted Qty</th></tr></thead><tbody id="stockCountTable"></tbody></table></div>
+            <div class="p-4 border-b flex flex-wrap items-center justify-between gap-3" style="border-color: var(--border)">
+              <p class="text-sm" style="color: var(--fg-muted)">Select products and enter the physically counted quantity. Leave blank to keep system quantity.</p>
+              <div class="flex gap-2">
+                <button onclick="selectAllStockCount(true)" class="btn btn-ghost btn-sm">Select All</button>
+                <button onclick="selectAllStockCount(false)" class="btn btn-ghost btn-sm">Deselect All</button>
+                <button onclick="addCustomCountRow()" class="btn btn-secondary btn-sm">+ Add Item</button>
+              </div>
+            </div>
+            <div class="table-container"><table><thead><tr><th style="width:40px"></th><th>Product Name</th><th>SKU</th><th>System Qty</th><th>Counted Qty</th><th></th></tr></thead><tbody id="stockCountTable"></tbody></table></div>
             <div class="p-4"><button onclick="submitStockCount()" class="btn btn-primary">Submit Count</button></div>
           </div>
         </div>
@@ -579,7 +586,7 @@
         <div class="card p-6 mb-4">
           <h3 class="font-semibold mb-4">Business Information</h3>
           <div class="grid md:grid-cols-2 gap-4 mb-4">
-            <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Business Name</label><input type="text" id="settBizName" class="input" value="Banda Wholesalers"></div>
+            <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Business Name</label><input type="text" id="settBizName" class="input" value="StockMW"></div>
             <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Phone</label><input type="text" id="settBizPhone" class="input" value="+265 999 100 200"></div>
             <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Email</label><input type="email" id="settBizEmail" class="input" value="info@banda.mw"></div>
             <div><label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--fg-muted)">Address</label><input type="text" id="settBizAddress" class="input" value="Lilongwe, Area 25"></div>
@@ -659,7 +666,7 @@
         { id: 2, account: "Bank Account (NBS)", type: "Debit", amount: 450000, ref: "Stock Purchase", date: "2025-04-15" },
       ],
       users: [
-        { id: 1, name: "Chisomo Banda", email: "admin@banda.mw", role: "Admin", status: "Active" },
+        { id: 1, name: "Berlin", email: "admin@banda.mw", role: "Admin", status: "Active" },
         { id: 2, name: "Tadala Phiri", email: "store@banda.mw", role: "Storekeeper", status: "Active" },
         { id: 3, name: "Kondwani Mwale", email: "acc@banda.mw", role: "Accountant", status: "Active" },
       ],
@@ -668,6 +675,11 @@
 
     // ─── STATE MANAGEMENT ─────────────────────────────────────────────────────
     let state = loadState();
+    // Force reset if cached data has old user/business name (migration)
+    if (state.users?.[0]?.name === 'Chisomo Banda' || (state.settings?.businessName === 'Banda Wholesalers')) {
+      localStorage.removeItem('stockmw_data');
+      state = loadState();
+    }
     let cart = [];
     let revenueChartInstance = null;
     let stockChartInstance = null;
@@ -724,6 +736,8 @@
     let movementFilter = 'ALL';
     let stockCounts = {};
     let stockResults = [];
+    let stockCountSelections = {}; // tracks which products are selected for counting
+    let customCountRows = []; // user-added custom rows
     let authed = false;
     let authUser = null;
 
@@ -773,7 +787,7 @@
       document.querySelector('.user-card .text-xs').textContent = user.role;
 
       // Update sidebar brand from settings
-      const bizName = state.settings?.businessName || 'Banda Wholesalers';
+      const bizName = state.settings?.businessName || 'StockMW';
       const brandSub = document.querySelector('.sidebar-brand p:nth-child(2)');
       if (brandSub) brandSub.textContent = bizName;
 
@@ -950,7 +964,7 @@
       document.getElementById('stat-expenses').textContent = fmtShort(totalExpenses);
 
       // Dynamic greeting
-      const bizName = state.settings?.businessName || 'Banda Wholesalers';
+      const bizName = state.settings?.businessName || 'StockMW';
       const userName = authUser?.name || 'User';
       const greetEl = document.getElementById('dashGreeting');
       if (greetEl) greetEl.textContent = `Welcome back, ${userName} — ${bizName}`;
@@ -1193,7 +1207,7 @@
     }
 
     function printInvoice(sale) {
-        const biz = state.settings?.businessName || 'Banda Wholesalers';
+        const biz = state.settings?.businessName || 'StockMW';
         const bizAddr = state.settings?.businessAddress || 'Lilongwe, Area 25';
         const bizPhone = state.settings?.businessPhone || '+265 999 100 200';
         const printContent = `
@@ -1424,43 +1438,203 @@
     }
 
     // ─── STOCK COUNTING ────────────────────────────────────────────────────────
+    function selectAllStockCount(select) {
+      state.products.forEach(p => { stockCountSelections[p.id] = select; });
+      renderStockCount();
+    }
+
+    function addCustomCountRow() {
+      customCountRows.push({ id: 'custom-' + Date.now(), name: '', sku: '', sysQty: 0, counted: '' });
+      renderStockCount();
+      // Focus the new name input
+      setTimeout(() => {
+        const inputs = document.querySelectorAll('.sc-name-input');
+        if (inputs.length > 0) inputs[inputs.length - 1].focus();
+      }, 50);
+    }
+
+    function removeCustomCountRow(rowId) {
+      customCountRows = customCountRows.filter(r => r.id !== rowId);
+      renderStockCount();
+    }
+
     function renderStockCount() {
       const tbody = document.getElementById('stockCountTable');
-      tbody.innerHTML = state.products.map(p => `
-        <tr>
-          <td><span class="font-medium" style="color: var(--fg-primary)">${esc(p.name)}</span></td>
-          <td><code style="background: var(--bg-primary); padding: 2px 8px; border-radius: 4px; font-size: 11px;">${esc(p.sku)}</code></td>
-          <td><span class="font-semibold">${p.qty} ${esc(p.unit)}</span></td>
-          <td><input type="number" class="input" style="width: 100px; text-align: center;" placeholder="${p.qty}" value="${stockCounts[p.id] || ''}" oninput="stockCounts[${p.id}] = this.value"></td>
-        </tr>
-      `).join('');
+
+      if (state.products.length === 0 && customCountRows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8" style="color: var(--fg-muted)">No products to count. <button onclick="navigateTo(\'products\')" class="text-sm font-semibold" style="color: var(--accent); background: none; border: none; cursor: pointer; text-decoration: underline;">Add products first</button></td></tr>';
+        const btn = document.querySelector('#stockCountForm .btn-primary');
+        if (btn) { btn.disabled = true; btn.style.opacity = '0.4'; }
+        return;
+      }
+      const btn = document.querySelector('#stockCountForm .btn-primary');
+      if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+
+      // Default all to selected if none are set
+      const hasAnySelection = Object.keys(stockCountSelections).length > 0 || customCountRows.length > 0;
+      if (!hasAnySelection) {
+        state.products.forEach(p => { stockCountSelections[p.id] = true; });
+      }
+
+      let html = '';
+
+      // Render existing products
+      state.products.forEach(p => {
+        const checked = stockCountSelections[p.id] !== false ? 'checked' : '';
+        const disabled = !checked ? 'disabled' : '';
+        html += `
+          <tr>
+            <td><input type="checkbox" class="sc-check" data-pid="${p.id}" ${checked} style="accent-color: var(--accent); width: 16px; height: 16px; cursor: pointer;"></td>
+            <td><input type="text" class="input sc-name-input" data-pid="${p.id}" value="${esc(p.name)}" style="min-width: 150px;" ${disabled}></td>
+            <td><code style="background: var(--bg-primary); padding: 2px 8px; border-radius: 4px; font-size: 11px;">${esc(p.sku)}</code></td>
+            <td><span class="font-semibold" style="${disabled ? 'opacity:0.4' : ''}">${p.qty} ${esc(p.unit)}</span></td>
+            <td><input type="number" class="input sc-qty-input" data-pid="${p.id}" style="width: 100px; text-align: center;" placeholder="${p.qty}" value="${stockCounts[p.id] !== undefined ? stockCounts[p.id] : ''}" ${disabled}></td>
+            <td></td>
+          </tr>`;
+      });
+
+      // Render custom rows
+      customCountRows.forEach(row => {
+        html += `
+          <tr style="background: rgba(200,149,108,0.05);">
+            <td></td>
+            <td><input type="text" class="input sc-custom-name" data-rid="${row.id}" value="${esc(row.name)}" placeholder="Product name..." style="min-width: 150px;"></td>
+            <td><input type="text" class="input sc-custom-sku" data-rid="${row.id}" value="${esc(row.sku)}" placeholder="SKU..." style="width: 100px; font-size: 12px;"></td>
+            <td><input type="number" class="input sc-custom-sys" data-rid="${row.id}" value="${row.sysQty || ''}" placeholder="0" style="width: 80px; text-align: center;"></td>
+            <td><input type="number" class="input sc-custom-counted" data-rid="${row.id}" value="${row.counted}" placeholder="0" style="width: 100px; text-align: center;"></td>
+            <td><button onclick="removeCustomCountRow('${row.id}')" class="btn btn-ghost p-1" style="color: var(--danger);" aria-label="Remove">&times;</button></td>
+          </tr>`;
+      });
+
+      tbody.innerHTML = html;
+
+      // Attach event listeners
+      document.querySelectorAll('.sc-check').forEach(cb => {
+        cb.addEventListener('change', function() {
+          const pid = Number(this.dataset.pid);
+          stockCountSelections[pid] = this.checked;
+          renderStockCount();
+        });
+      });
+      document.querySelectorAll('.sc-qty-input').forEach(input => {
+        input.addEventListener('input', function() {
+          stockCounts[Number(this.dataset.pid)] = this.value;
+        });
+      });
+      document.querySelectorAll('.sc-name-input').forEach(input => {
+        input.addEventListener('input', function() {
+          const pid = Number(this.dataset.pid);
+          const product = state.products.find(p => p.id === pid);
+          if (product) product.name = this.value.trim();
+        });
+      });
+      document.querySelectorAll('.sc-custom-name').forEach(input => {
+        input.addEventListener('input', function() {
+          const row = customCountRows.find(r => r.id === this.dataset.rid);
+          if (row) row.name = this.value.trim();
+        });
+      });
+      document.querySelectorAll('.sc-custom-sku').forEach(input => {
+        input.addEventListener('input', function() {
+          const row = customCountRows.find(r => r.id === this.dataset.rid);
+          if (row) row.sku = this.value.trim();
+        });
+      });
+      document.querySelectorAll('.sc-custom-sys').forEach(input => {
+        input.addEventListener('input', function() {
+          const row = customCountRows.find(r => r.id === this.dataset.rid);
+          if (row) row.sysQty = parseInt(this.value) || 0;
+        });
+      });
+      document.querySelectorAll('.sc-custom-counted').forEach(input => {
+        input.addEventListener('input', function() {
+          const row = customCountRows.find(r => r.id === this.dataset.rid);
+          if (row) row.counted = this.value;
+        });
+      });
     }
 
     function submitStockCount() {
-      stockResults = state.products.map(p => {
+      // Save any name edits to state first
+      document.querySelectorAll('.sc-name-input').forEach(input => {
+        const pid = Number(input.dataset.pid);
+        const product = state.products.find(p => p.id === pid);
+        if (product) {
+          const newName = input.value.trim();
+          if (newName && newName !== product.name) {
+            product.name = newName;
+            // Also update name in movements
+            state.movements.forEach(m => { if (m.product === product.name) m.product = newName; });
+          }
+        }
+      });
+
+      // Only include selected products
+      stockResults = state.products.filter(p => stockCountSelections[p.id] !== false).map(p => {
         const raw = stockCounts[p.id];
         const counted = (raw !== undefined && raw !== "" && !isNaN(parseInt(raw))) ? parseInt(raw) : p.qty;
         return { ...p, counted, diff: counted - p.qty };
       });
 
+      // Add custom rows
+      customCountRows.forEach(row => {
+        if (row.name) {
+          const counted = parseInt(row.counted) || 0;
+          const sysQty = row.sysQty || 0;
+          stockResults.push({
+            id: row.id, name: row.name, sku: row.sku, qty: sysQty,
+            unit: 'pcs', counted, diff: counted - sysQty, isCustom: true
+          });
+        }
+      });
+
+      if (stockResults.length === 0) { alert('No products selected for counting'); return; }
+
       document.getElementById('stockCountForm').style.display = 'none';
       document.getElementById('stockCountResults').style.display = 'block';
 
       const tbody = document.getElementById('stockResultsTable');
-      tbody.innerHTML = stockResults.map(r => `
-        <tr>
-          <td><span class="font-medium">${esc(r.name)}</span></td>
+      tbody.innerHTML = stockResults.map((r, i) => `
+        <tr ${r.isCustom ? 'style="background: rgba(200,149,108,0.05);"' : ''}>
+          <td><input type="text" class="input sc-result-name" data-idx="${i}" value="${esc(r.name)}" style="min-width: 140px; font-size: 13px;"></td>
           <td>${r.qty}</td>
-          <td>${r.counted}</td>
-          <td><span style="color: ${r.diff < 0 ? 'var(--danger)' : r.diff > 0 ? 'var(--success)' : 'var(--fg-muted)'}">${r.diff > 0 ? '+' : ''}${r.diff}</span></td>
-          <td><span class="badge ${r.diff === 0 ? 'badge-success' : r.diff > 0 ? 'badge-info' : 'badge-danger'}">${r.diff === 0 ? 'Matched' : r.diff > 0 ? 'Surplus' : 'Shortage'}</span></td>
+          <td><input type="number" class="input sc-result-input" data-idx="${i}" style="width: 80px; text-align: center;" value="${r.counted}"></td>
+          <td><span style="color: ${r.diff < 0 ? 'var(--danger)' : r.diff > 0 ? 'var(--success)' : 'var(--fg-muted)'}" class="sc-diff-${i}">${r.diff > 0 ? '+' : ''}${r.diff}</span></td>
+          <td><span class="badge sc-badge-${i} ${r.diff === 0 ? 'badge-success' : r.diff > 0 ? 'badge-info' : 'badge-danger'}">${r.diff === 0 ? 'Matched' : r.diff > 0 ? 'Surplus' : 'Shortage'}</span></td>
         </tr>
       `).join('');
+
+      // Allow editing counted values and names in results
+      document.querySelectorAll('.sc-result-input').forEach(input => {
+        input.addEventListener('input', function() {
+          const idx = Number(this.dataset.idx);
+          const newVal = parseInt(this.value) || 0;
+          stockResults[idx].counted = newVal;
+          stockResults[idx].diff = newVal - stockResults[idx].qty;
+          const diff = stockResults[idx].diff;
+          const diffEl = document.querySelector('.sc-diff-' + idx);
+          const badgeEl = document.querySelector('.sc-badge-' + idx);
+          if (diffEl) diffEl.textContent = (diff > 0 ? '+' : '') + diff;
+          if (diffEl) diffEl.style.color = diff < 0 ? 'var(--danger)' : diff > 0 ? 'var(--success)' : 'var(--fg-muted)';
+          if (badgeEl) {
+            badgeEl.className = 'badge sc-badge-' + idx + ' ' + (diff === 0 ? 'badge-success' : diff > 0 ? 'badge-info' : 'badge-danger');
+            badgeEl.textContent = diff === 0 ? 'Matched' : diff > 0 ? 'Surplus' : 'Shortage';
+          }
+        });
+      });
+      document.querySelectorAll('.sc-result-name').forEach(input => {
+        input.addEventListener('input', function() {
+          const idx = Number(this.dataset.idx);
+          stockResults[idx].name = this.value.trim();
+        });
+      });
     }
 
     function recountStock() {
       stockCounts = {};
       stockResults = [];
+      stockCountSelections = {};
+      customCountRows = [];
       document.getElementById('stockCountForm').style.display = 'block';
       document.getElementById('stockCountResults').style.display = 'none';
       renderStockCount();
